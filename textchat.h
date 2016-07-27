@@ -8,7 +8,7 @@
 #include <QMessageBox>
 
 /* 文本聊天的服务端端口是8888 */
-#define TEXTCHAT_SERVER_PORT 9797
+#define TEXTCHAT_SERVER_PORT 8888
 #define ACCEPT "accept"
 #define REJECT "reject"
 

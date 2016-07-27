@@ -49,6 +49,8 @@ void TextChat::ConnectHost(const QHostAddress &addr)
         m_pConn = new QTcpSocket;
         m_pConn->open(QIODevice::ReadWrite);
         m_pConn->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+
+        connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
     }
 }
 

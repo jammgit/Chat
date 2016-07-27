@@ -2,7 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QMouseEvent>
 #include <string>
+#include <QPoint>
 #include "findterminal.h"
 #include "textchat.h"
 #include "mylistwidget.h"
@@ -26,7 +28,8 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
-
+    void mousePressEvent(QMouseEvent *event);
+    void mouseMoveEvent(QMouseEvent *event);
 private:
     void __Init();
 
@@ -37,6 +40,8 @@ private slots:  /* ------------窗口控件槽函数---------------- */
     void on_LIST_HOST_doubleClicked(const QModelIndex &index);
 
     void on_BTN_SEND_clicked();
+
+    void on_BTN_WINDOW_CLOSE_clicked();
 
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
@@ -53,6 +58,7 @@ public slots: /* --------------视频信息槽函数---------------- */
 
 private:
     Ui::MainWindow *ui;
+    QPoint m_position;
     /* 多播终端发现接口 */
     FindTerminal *m_pFindTerminal;
     /* 文本聊天接口 */

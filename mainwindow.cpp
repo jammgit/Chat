@@ -50,6 +50,15 @@ void MainWindow::__Init()
                                             "QPushButton:pressed{background-color:rgb(85, 170, 255);\
                                              border-style: inset; }"
                                            );
+     ui->BTN_SESSION_CLOSE->setStyleSheet("QPushButton{background-color:black;\
+                                             color: white;   border-radius: 10px;  border: 2px groove gray;\
+                                             border-style: outset;}"
+                                             "QPushButton:hover{background-color:white; color: black;}"
+                                             "QPushButton:pressed{background-color:rgb(85, 170, 255);\
+                                              border-style: inset; }"
+                                            );
+    this->setWindowFlags(Qt::FramelessWindowHint);
+    //this->setAttribute(Qt::WA_TranslucentBackground);
     this->setStyleSheet("QMainWindow{background-image: url(:/src/bg1.png)}");
     }
 
@@ -62,6 +71,23 @@ void MainWindow::__Init()
             this, SLOT(slot_request_arrive(QString,QMessageBox::StandardButton&)));
     connect(m_pTextChat, SIGNAL(signal_recv_msg(QString)), this, SLOT(slot_recv_text_msg(QString)));
     connect(m_pTextChat, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
+}
+
+void MainWindow::mousePressEvent(QMouseEvent *event)
+{
+    if (event->button() == Qt::LeftButton) {
+    m_position = event->globalPos() - frameGeometry().topLeft();
+    event->accept();
+    }
+}
+
+void MainWindow::mouseMoveEvent(QMouseEvent *event)
+{
+    if (event->buttons() & Qt::LeftButton)
+    {
+    move(event->globalPos() - m_position);
+    event->accept();
+    }
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -99,11 +125,14 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
 void MainWindow::on_BTN_SEND_clicked()
 {
     m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
-    ui->TEXT_MSG_SEND->clear();
     ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+
                                  ui->TEXT_MSG_SEND->toPlainText());
+    ui->TEXT_MSG_SEND->clear();
 }
-
+void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
+{
+    this->close();
+}
 ////////////////////////////////////////////////////////////////////////
 /// 文本消息槽函数
 ////////////////////////////////////////////////////////////////////////
@@ -138,5 +167,7 @@ void MainWindow::slot_request_result(bool ret)
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
     }
 }
+
+
 
 
