@@ -17,11 +17,10 @@ MainWindow::~MainWindow()
 
 void MainWindow::__Init()
 {
-    m_pFindTerminal = new FindTerminal;
-    m_pFindTerminal->AddBrowser(ui->LIST_HOST);
-    m_pTextChat = new TextChat;
 
+    {
     /* 初始化控件 */
+    ui->TEXT_MSG_RECORD->setReadOnly(true);
     QPalette pl = ui->TEXT_MSG_RECORD->palette();
     pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
     ui->TEXT_MSG_RECORD->setPalette(pl);
@@ -31,12 +30,32 @@ void MainWindow::__Init()
     pl = ui->LIST_HOST->palette();
     pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
     ui->LIST_HOST->setPalette(pl);
-    pl = ui->BTN_REFRESH->palette();
+    pl = ui->LABEL_OTHER->palette();
     pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
-    ui->BTN_REFRESH->setPalette(pl);
-
+    ui->LABEL_OTHER->setPalette(pl);
+    pl = ui->LABEL_SELF->palette();
+    pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
+    ui->LABEL_SELF->setPalette(pl);
+    ui->BTN_REFRESH->setStyleSheet("QPushButton{background-color:black;\
+                                                color: white;   border-radius: 10px;  border: 2px groove gray;\
+                                                border-style: outset;}"
+                                                "QPushButton:hover{background-color:white; color: black;}"
+                                                "QPushButton:pressed{background-color:rgb(85, 170, 255);\
+                                                 border-style: inset; }"
+                                               );
+    ui->BTN_SEND->setStyleSheet("QPushButton{background-color:black;\
+                                            color: white;   border-radius: 10px;  border: 2px groove gray;\
+                                            border-style: outset;}"
+                                            "QPushButton:hover{background-color:white; color: black;}"
+                                            "QPushButton:pressed{background-color:rgb(85, 170, 255);\
+                                             border-style: inset; }"
+                                           );
     this->setStyleSheet("QMainWindow{background-image: url(:/src/bg1.png)}");
+    }
 
+    m_pFindTerminal = new FindTerminal;
+    m_pFindTerminal->AddBrowser(ui->LIST_HOST);
+    m_pTextChat = new TextChat;
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool)), this, SLOT(slot_request_result(bool)));
     connect(m_pTextChat, SIGNAL(signal_request_arrive(QString,QMessageBox::StandardButton&)),

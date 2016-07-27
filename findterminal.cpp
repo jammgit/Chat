@@ -112,7 +112,7 @@ void FindTerminal::__Recv_Msg(QUdpSocket *socket, QHostAddress *address)
             if (a.toString() == addr.toString())
             {
                 qDebug() << "Equal local host";
-                //return;
+                return;
             }
         }
         buffer[ret] = '\0';
