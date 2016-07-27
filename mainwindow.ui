@@ -79,7 +79,7 @@
     </property>
     <property name="icon">
      <iconset resource="picture.qrc">
-      <normaloff>:/refresh</normaloff>:/refresh</iconset>
+      <normaloff>:/src/btn_refresh.png</normaloff>:/src/btn_refresh.png</iconset>
     </property>
    </widget>
    <widget class="QPushButton" name="BTN_SEND">
@@ -108,7 +108,7 @@
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap resource="picture.qrc">:/you</pixmap>
+     <pixmap resource="picture.qrc">:/src/label_2.jpg</pixmap>
     </property>
    </widget>
    <widget class="QLabel" name="LABEL_OTHER">
@@ -117,14 +117,14 @@
       <x>20</x>
       <y>350</y>
       <width>331</width>
-      <height>270</height>
+      <height>261</height>
      </rect>
     </property>
     <property name="text">
      <string/>
     </property>
     <property name="pixmap">
-     <pixmap resource="picture.qrc">:/me</pixmap>
+     <pixmap resource="picture.qrc">:/src/label_1.jpeg</pixmap>
     </property>
    </widget>
    <widget class="QLabel" name="label">
@@ -163,7 +163,7 @@
     <property name="geometry">
      <rect>
       <x>960</x>
-      <y>10</y>
+      <y>20</y>
       <width>31</width>
       <height>31</height>
      </rect>
@@ -176,7 +176,7 @@
     <property name="geometry">
      <rect>
       <x>920</x>
-      <y>10</y>
+      <y>20</y>
       <width>31</width>
       <height>31</height>
      </rect>

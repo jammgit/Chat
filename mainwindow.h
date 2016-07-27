@@ -3,6 +3,9 @@
 
 #include <QMainWindow>
 #include <QMouseEvent>
+#include <QPainter>
+#include <QtMath>
+#include <QGraphicsDropShadowEffect>
 #include <string>
 #include <QPoint>
 #include "findterminal.h"
@@ -30,6 +33,8 @@ public:
     ~MainWindow();
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
+    void paintEvent(QPaintEvent *);
+
 private:
     void __Init();
 

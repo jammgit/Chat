@@ -22,20 +22,41 @@ void MainWindow::__Init()
     /* 初始化控件 */
     ui->TEXT_MSG_RECORD->setReadOnly(true);
     QPalette pl = ui->TEXT_MSG_RECORD->palette();
-    pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
+    pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
     ui->TEXT_MSG_RECORD->setPalette(pl);
     pl = ui->TEXT_MSG_SEND->palette();
-    pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
+    pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
     ui->TEXT_MSG_SEND->setPalette(pl);
     pl = ui->LIST_HOST->palette();
-    pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
+    pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
     ui->LIST_HOST->setPalette(pl);
-    pl = ui->LABEL_OTHER->palette();
-    pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
-    ui->LABEL_OTHER->setPalette(pl);
-    pl = ui->LABEL_SELF->palette();
-    pl.setBrush(QPalette::Base,QBrush(QColor(180,180,180,150)));
-    ui->LABEL_SELF->setPalette(pl);
+
+    QGraphicsDropShadowEffect *shadow_effect = new QGraphicsDropShadowEffect(this);
+    shadow_effect->setOffset(-5, 5);
+    shadow_effect->setColor(Qt::black);
+    shadow_effect->setBlurRadius(8);
+    QGraphicsDropShadowEffect *shadow_effect1 = new QGraphicsDropShadowEffect(this);
+    shadow_effect1->setOffset(-5, 5);
+    shadow_effect1->setColor(Qt::black);
+    shadow_effect1->setBlurRadius(8);
+    QGraphicsDropShadowEffect *shadow_effect2 = new QGraphicsDropShadowEffect(this);
+    shadow_effect2->setOffset(-5, 5);
+    shadow_effect2->setColor(Qt::black);
+    shadow_effect2->setBlurRadius(8);
+    QGraphicsDropShadowEffect *shadow_effect3 = new QGraphicsDropShadowEffect(this);
+    shadow_effect3->setOffset(-5, 5);
+    shadow_effect3->setColor(Qt::gray);
+    shadow_effect3->setBlurRadius(8);
+    QGraphicsDropShadowEffect *shadow_effect4 = new QGraphicsDropShadowEffect(this);
+    shadow_effect4->setOffset(-5, 5);
+    shadow_effect4->setColor(Qt::gray);
+    shadow_effect4->setBlurRadius(8);
+    ui->TEXT_MSG_RECORD->setGraphicsEffect(shadow_effect);
+    ui->TEXT_MSG_SEND->setGraphicsEffect(shadow_effect1);
+    ui->LIST_HOST->setGraphicsEffect(shadow_effect2);
+    ui->LABEL_OTHER->setGraphicsEffect(shadow_effect3);
+    ui->LABEL_SELF->setGraphicsEffect(shadow_effect4);
+
     ui->BTN_REFRESH->setStyleSheet("QPushButton{background-color:black;\
                                                 color: white;   border-radius: 10px;  border: 2px groove gray;\
                                                 border-style: outset;}"
@@ -58,8 +79,9 @@ void MainWindow::__Init()
                                               border-style: inset; }"
                                             );
     this->setWindowFlags(Qt::FramelessWindowHint);
-    //this->setAttribute(Qt::WA_TranslucentBackground);
-    this->setStyleSheet("QMainWindow{background-image: url(:/src/bg1.png)}");
+    this->setAttribute(Qt::WA_TranslucentBackground);
+    /* 直接使用资源文件的资源，路径则为... */
+    this->setStyleSheet("QMainWindow{background-image: url(:/src/bg_4.png)}");
     }
 
     m_pFindTerminal = new FindTerminal;
@@ -75,9 +97,10 @@ void MainWindow::__Init()
 
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
-    if (event->button() == Qt::LeftButton) {
-    m_position = event->globalPos() - frameGeometry().topLeft();
-    event->accept();
+    if (event->button() == Qt::LeftButton)
+    {
+        m_position = event->globalPos() - frameGeometry().topLeft();
+        event->accept();
     }
 }
 
@@ -85,8 +108,32 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
     if (event->buttons() & Qt::LeftButton)
     {
-    move(event->globalPos() - m_position);
-    event->accept();
+        move(event->globalPos() - m_position);
+        event->accept();
+    }
+}
+
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+    event = event;
+    QPainterPath path;
+    path.setFillRule(Qt::WindingFill);
+    path.addRect(10, 10, this->width()-20, this->height()-20);
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    /* 此图像应放在build文件夹的子文件夹src里 */
+    painter.fillPath(path, QBrush(QPixmap("src/bg_4.png")));
+
+    QColor color(0, 0, 0, 50);
+    for(int i=0; i<10; i++)
+    {
+        QPainterPath path;
+        path.setFillRule(Qt::WindingFill);
+        path.addRect(10-i, 10-i, this->width()-(10-i)*2, this->height()-(10-i)*2);
+        color.setAlpha(150 - qSqrt(i)*50);
+        painter.setPen(color);
+        painter.drawPath(path);
     }
 }
 

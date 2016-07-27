@@ -18,6 +18,6 @@ void MyListWidget::Update(FindTerminal *r)
     QList<chat_host_t> hosts = h.values();
     this->clear();
     foreach (chat_host_t host, hosts) {
-       this->addItem(host.hostname+"("+host.address+")");
+       this->addItem(host.hostname+"\n("+host.address+")");
     }
 }

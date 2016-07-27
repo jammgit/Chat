@@ -20,14 +20,25 @@ FindTerminal::~FindTerminal()
 
 void FindTerminal::__Init()
 {
-    /* 初始化本地地址 */
-    QString host = QHostInfo::localHostName();
-    m_host = QHostInfo::fromName(host); //包含了用户名 和 地址信息
-    QList<QHostAddress> l = m_host.addresses();
-    foreach (QHostAddress a, l) {
-        qDebug() << a.toString();
+    QString hname = QHostInfo::localHostName();
+    m_host = QHostInfo::fromName(hname);
+    qDebug() << "主机名" << hname;
+    /* 初始化本地地址,获取所有可能的网卡接口 */
+    QList<QHostAddress> hostlist;
+    foreach (QHostAddress address, QNetworkInterface::allAddresses())
+    {
+        if (strncmp(address.toString().toStdString().c_str(),"10", 2) == 0
+                || strncmp(address.toString().toStdString().c_str(),"172", 3) == 0
+                || strncmp(address.toString().toStdString().c_str(),"192", 3) == 0)
+        {/* 如果是三种内网地址的一种，则添加到host链表 */
+            qDebug() << "Address:" << address;
+            hostlist.push_back(address);
+        }
     }
+    m_host.setAddresses(hostlist);
 
+
+    /* 初始化网络接口 */
     m_pSend = new QUdpSocket(this);
     m_pSend->open(QIODevice::WriteOnly);
     m_pMultiRecv = new QUdpSocket(this);
