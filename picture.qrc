@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/">
+        <file alias="you">src/0d58a85446ce8f4d3a580bb5fe44e238.jpeg</file>
+        <file alias="me">src/6e04b83202fed04d92f73d78e393b05e.jpg</file>
+        <file alias="refresh">src/996bfb926d34f1a0d17ef445854a0abd.png</file>
+        <file alias="bg">src/bg.jpg</file>
+        <file>src/bg1.png</file>
+        <file>src/bg2.png</file>
+    </qresource>
+</RCC>
