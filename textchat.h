@@ -47,7 +47,7 @@ private:
 
 signals:
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
-    void signal_request_result(bool ret);
+    void signal_request_result(bool ret, const chat_host_t& peerhost);
     /* 请求聊天消息到达,btn返回用户点击的按钮 */
     void signal_request_arrive(QString text, QMessageBox::StandardButton &btn);
     /* 消息到达，通知窗口更新 */
@@ -70,6 +70,8 @@ private:
     QTcpSocket *m_pConn;
     /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
     FindTerminal *m_pTer;
+    /* 在连接时，对端的地址信息 */
+    chat_host_t m_peerhost;
 };
 
 #endif // TEXTCHAT_H

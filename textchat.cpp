@@ -98,7 +98,7 @@ void TextChat::slot_is_accept()
             QMessageBox::StandardButton btn;
             /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
             emit this->signal_request_arrive(QString("用户：")
-                                             + (m_pTer==nullptr?"":(m_pTer->GetMap()[m_pConn->peerAddress().toString().toInt()]).hostname)
+                                             + (m_pTer==nullptr?"":(m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pConn->peerAddress().toString()).toInt()].hostname))
                                              + "("+m_pConn->peerAddress().toString()+")"
                                              + "发起聊天请求，是否接受请求？", btn);
 
@@ -108,7 +108,7 @@ void TextChat::slot_is_accept()
             {
                 m_pConn->write(ACCEPT);
                 m_isConnect = true;
-                emit this->signal_request_result(true);
+                emit this->signal_request_result(true, m_peerhost);
             }
             else
             {/* 不接受请求 */
@@ -133,7 +133,7 @@ void TextChat::slot_recv_msg()
         {/* 请求发起者 */
             m_isConnect = true;
             /* 提示请求成功 */
-            emit this->signal_request_result(true);
+            emit this->signal_request_result(true, m_peerhost);
         }
         else if (str == QString(REJECT))
         {/* 请求发起者：不被接受请求，则释放socket */
@@ -143,7 +143,7 @@ void TextChat::slot_recv_msg()
             delete m_pConn;
             m_pConn = nullptr;
             /* 提示请求失败 */
-            emit this->signal_request_result(false);
+            emit this->signal_request_result(false, m_peerhost);
         }
         else
         {/* 被请求者，注意：主动关闭应该有请求者发出，不然服务端口会处于timewait状态 */

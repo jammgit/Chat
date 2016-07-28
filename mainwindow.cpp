@@ -20,6 +20,9 @@ void MainWindow::__Init()
 
     {
     /* 初始化控件 */
+//    ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"3\">这里加深对卡活动空间啊的空间啊的空间啊的空间啊打卡是卡萨的空间撒很大空间上打开就是打开就挨打是文字</font></p>"));
+//    ui->TEXT_MSG_RECORD->setHtml(ui->TEXT_MSG_RECORD->toHtml()+QString("<p align=\"left\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"3\">这里jshdkja a按时到敬爱离开大家考虑的爱丽丝打算离开到拉萨的了卡萨丁啊是文字</font></p>"));
+
     ui->TEXT_MSG_SEND->installEventFilter(this);
     ui->TEXT_MSG_RECORD->setEnabled(false);
     ui->TEXT_MSG_SEND->setEnabled(false);
@@ -93,12 +96,14 @@ void MainWindow::__Init()
     this->setStyleSheet("QMainWindow{background-image: url(:/src/bg_4.png)}");
     }
 
+    m_istrue = true;
     m_pFindTerminal = new FindTerminal;
     m_pFindTerminal->AddBrowser(ui->LIST_HOST);
     m_pTextChat = new TextChat;
     m_pTextChat->SetFindTerminal(m_pFindTerminal);
     /* 初始化文本聊天相关的connect */
-    connect(m_pTextChat, SIGNAL(signal_request_result(bool)), this, SLOT(slot_request_result(bool)));
+    connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
+            this, SLOT(slot_request_result(bool, const chat_host_t&)));
     connect(m_pTextChat, SIGNAL(signal_request_arrive(QString,QMessageBox::StandardButton&)),
             this, SLOT(slot_request_arrive(QString,QMessageBox::StandardButton&)));
     connect(m_pTextChat, SIGNAL(signal_recv_msg(QString)), this, SLOT(slot_recv_text_msg(QString)));
@@ -181,13 +186,9 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     const char *p = stdstr.c_str();
     while (*p!='(')
     {
-        ip[iplen++] = *p;
         p++;
     }
     p++;
-    ip[iplen] = '\0';
-    m_peername = QString(ip);
-    iplen = 0;
     while (*p!=')')
     {
         ip[iplen] = *p;
@@ -202,9 +203,14 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
 
 void MainWindow::on_BTN_SEND_clicked()
 {
-    m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
-    ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+
-                                 ui->TEXT_MSG_SEND->toPlainText());
+//    m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
+//    ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+
+//                                 ui->TEXT_MSG_SEND->toPlainText());
+
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + TIME_FRONT_SELF + m_peerhost.hostname + TEXT_BACK
+                + TEXT_FRONT_SELF + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK);
     ui->TEXT_MSG_SEND->clear();
 }
 
@@ -222,6 +228,7 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
+    m_pTextChat->Close();
     this->close();
 }
 void MainWindow::on_BTN_MIN_clicked()
@@ -245,7 +252,11 @@ void MainWindow::slot_peer_close()
 
 void MainWindow::slot_recv_text_msg(QString text)
 {
-    ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+text);
+    //ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+text);
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + TIME_FRONT_OTHER + m_peerhost.hostname + TEXT_BACK
+                + TEXT_FRONT_OTHER + text + TEXT_BACK);
 }
 
 void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &btn)
@@ -256,7 +267,7 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
     btn = b;
 }
 
-void MainWindow::slot_request_result(bool ret)
+void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 {
     if (ret)
     {/* 聊天请求被接受 */
@@ -264,7 +275,9 @@ void MainWindow::slot_request_result(bool ret)
         ui->TEXT_MSG_RECORD->setEnabled(true);
         ui->TEXT_MSG_SEND->setEnabled(true);
         ui->BTN_SEND->setEnabled(true);
-        ui->LABEL_CHAT_WITH_WHO->setText(m_peername);
+        ui->LABEL_CHAT_WITH_WHO->setText(peerhost.hostname);
+
+        m_peerhost = peerhost;
     }
     else
     {/* 聊天请求被拒绝 */

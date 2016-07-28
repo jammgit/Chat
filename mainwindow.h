@@ -8,6 +8,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <string>
 #include <QPoint>
+#include <QTextEdit>
 #include "findterminal.h"
 #include "textchat.h"
 #include "mylistwidget.h"
@@ -19,6 +20,12 @@
  *      }
  *
 */
+
+#define TEXT_FRONT_SELF  QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"3\">")
+#define TIME_FRONT_SELF  QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"2\">")
+#define TEXT_FRONT_OTHER QString("<p align=\"left\"><font style=\"font-family:微软雅黑\" color=\"#303030\" size=\"3\">")
+#define TIME_FRONT_OTHER QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"2\">")
+#define TEXT_BACK        QString("</font></p>")
 
 
 namespace Ui {
@@ -55,7 +62,7 @@ private slots:  /* ------------窗口控件槽函数---------------- */
 
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
-    void slot_request_result(bool ret);
+    void slot_request_result(bool ret, const chat_host_t& peerhost);
     /* 请求聊天消息到达,btn返回用户点击的按钮 */
     void slot_request_arrive(QString text, QMessageBox::StandardButton &btn);
     /* 文本消息到达，通知窗口更新 */
@@ -73,8 +80,10 @@ private:
     FindTerminal *m_pFindTerminal;
     /* 文本聊天接口 */
     TextChat *m_pTextChat;
-    /* 正在聊天的对端用户名 */
-    QString m_peername;
+    /* 正在聊天的对端用户的信息 */
+    chat_host_t m_peerhost;
+    /* 用于聊天框是否需要打印发送者名和时间的变量，初始值为true(判断依据是是否是连续的消息) */
+    bool m_istrue;
 };
 
 #endif // MAINWINDOW_H
