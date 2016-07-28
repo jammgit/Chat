@@ -21,10 +21,10 @@
  *
 */
 
-#define TEXT_FRONT_SELF  QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"3\">")
+#define TEXT_FRONT_SELF  QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#303030\" size=\"3\">")
 #define TIME_FRONT_SELF  QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"2\">")
 #define TEXT_FRONT_OTHER QString("<p align=\"left\"><font style=\"font-family:微软雅黑\" color=\"#303030\" size=\"3\">")
-#define TIME_FRONT_OTHER QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"2\">")
+#define TIME_FRONT_OTHER QString("<p align=\"left\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"2\">")
 #define TEXT_BACK        QString("</font></p>")
 
 
@@ -51,14 +51,16 @@ private slots:  /* ------------窗口控件槽函数---------------- */
     void on_BTN_REFRESH_clicked();
     /* 双击请求聊天 */
     void on_LIST_HOST_doubleClicked(const QModelIndex &index);
-
+    /* 发送消息 */
     void on_BTN_SEND_clicked();
-
+    /* 关闭程序 */
     void on_BTN_WINDOW_CLOSE_clicked();
-
+    /* 最小化 */
     void on_BTN_MIN_clicked();
-
+    /* 关闭会话 */
     void on_BTN_SESSION_CLOSE_clicked();
+    /* 发送图片 */
+    void on_BTN_SEND_PIC_clicked();
 
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
@@ -82,8 +84,8 @@ private:
     TextChat *m_pTextChat;
     /* 正在聊天的对端用户的信息 */
     chat_host_t m_peerhost;
-    /* 用于聊天框是否需要打印发送者名和时间的变量，初始值为true(判断依据是是否是连续的消息) */
-    bool m_istrue;
+    /* 本机地址信息 */
+//    QHostInfo m_host;
 };
 
 #endif // MAINWINDOW_H

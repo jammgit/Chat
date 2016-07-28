@@ -32,6 +32,7 @@ public:
     void SetFindTerminal(FindTerminal *ter)
     {
         m_pTer = ter;
+        //m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pConn->peerAddress().toString()).toInt()].hostname;
     }
 
     /* 是否已建立连接,注意：是否能够开始聊天 和 是否建立连接是两回事，
@@ -56,6 +57,10 @@ signals:
     void signal_peer_close();
 
 private slots:
+    /* connect成功,那么建立readyread，否则error()被发送 */
+    void slot_connect_success();
+    /* 请求失败时，error()信号的槽函数 */
+    void slot_connect_failed(QAbstractSocket::SocketError err);
     /* 监听套接字：是否接受聊天请求 */
     void slot_is_accept();
     /* 连接套接字：接受新消息 */

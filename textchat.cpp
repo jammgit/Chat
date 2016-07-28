@@ -46,10 +46,38 @@ void TextChat::ConnectHost(const QHostAddress &addr)
     */
     if (!m_pConn)
     {
+        if (m_pTer)
+            m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = addr.toString()).toInt()].hostname;
+        else
+            qDebug() << "in textchat.cpp:m_pTer is nullptr";
         m_pConn = new QTcpSocket;
         m_pConn->connectToHost(addr, TEXTCHAT_SERVER_PORT);
-        connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+
+        connect(m_pConn, SIGNAL(connected()), this, SLOT(slot_connect_success()));
+        connect(m_pConn, SIGNAL(error(QAbstractSocket::SocketError)),
+                this, SLOT(slot_connect_failed(QAbstractSocket::SocketError)));
+
     }
+}
+
+/* connect成功,那么建立readyread，否则error()被发送 */
+void TextChat::slot_connect_success()
+{
+    connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+}
+/* 请求失败时，error()信号的槽函数 */
+void TextChat::slot_connect_failed(QAbstractSocket::SocketError err)
+{
+    err = err;
+    QMessageBox::information(nullptr,
+                             "错误",
+                             QString("请求错误[%1]，对方或许不在线，请刷新或者重试").arg(m_pConn->errorString()));
+    if (m_pConn)
+    {
+        delete m_pConn;
+        m_pConn = nullptr;
+    }
+    m_isConnect = false;
 }
 
 /* 关闭连接 */

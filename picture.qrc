@@ -7,5 +7,13 @@
         <file>src/label_1.jpeg</file>
         <file>src/label_2.jpg</file>
         <file>src/bg_4.png</file>
+        <file>src/reload.png</file>
+        <file>src/send.png</file>
+        <file>src/sendpic.png</file>
+        <file>src/windowclose.png</file>
+        <file>src/windowmin.png</file>
+        <file>src/sessionclose.png</file>
+        <file>src/windowclose_2.png</file>
+        <file>src/windowicon.png</file>
     </qresource>
 </RCC>

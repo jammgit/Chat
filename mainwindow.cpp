@@ -20,8 +20,7 @@ void MainWindow::__Init()
 
     {
     /* 初始化控件 */
-//    ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"3\">这里加深对卡活动空间啊的空间啊的空间啊的空间啊打卡是卡萨的空间撒很大空间上打开就是打开就挨打是文字</font></p>"));
-//    ui->TEXT_MSG_RECORD->setHtml(ui->TEXT_MSG_RECORD->toHtml()+QString("<p align=\"left\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"3\">这里jshdkja a按时到敬爱离开大家考虑的爱丽丝打算离开到拉萨的了卡萨丁啊是文字</font></p>"));
+    ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><img src=\"src/bg_1.png\" height=\"100\" width=\"100\"><p>"));
 
     ui->TEXT_MSG_SEND->installEventFilter(this);
     ui->TEXT_MSG_RECORD->setEnabled(false);
@@ -55,48 +54,46 @@ void MainWindow::__Init()
     shadow_effect2->setOffset(-5, 5);
     shadow_effect2->setColor(Qt::black);
     shadow_effect2->setBlurRadius(8);
-    QGraphicsDropShadowEffect *shadow_effect3 = new QGraphicsDropShadowEffect(this);
-    shadow_effect3->setOffset(-5, 5);
-    shadow_effect3->setColor(Qt::gray);
-    shadow_effect3->setBlurRadius(8);
-    QGraphicsDropShadowEffect *shadow_effect4 = new QGraphicsDropShadowEffect(this);
-    shadow_effect4->setOffset(-5, 5);
-    shadow_effect4->setColor(Qt::gray);
-    shadow_effect4->setBlurRadius(8);
+//    QGraphicsDropShadowEffect *shadow_effect3 = new QGraphicsDropShadowEffect(this);
+//    shadow_effect3->setOffset(-5, 5);
+//    shadow_effect3->setColor(Qt::gray);
+//    shadow_effect3->setBlurRadius(8);
+//    QGraphicsDropShadowEffect *shadow_effect4 = new QGraphicsDropShadowEffect(this);
+//    shadow_effect4->setOffset(-5, 5);
+//    shadow_effect4->setColor(Qt::gray);
+//    shadow_effect4->setBlurRadius(8);
     ui->TEXT_MSG_RECORD->setGraphicsEffect(shadow_effect);
     ui->TEXT_MSG_SEND->setGraphicsEffect(shadow_effect1);
     ui->LIST_HOST->setGraphicsEffect(shadow_effect2);
-    ui->LABEL_OTHER->setGraphicsEffect(shadow_effect3);
-    ui->LABEL_SELF->setGraphicsEffect(shadow_effect4);
+//    ui->LABEL_OTHER->setGraphicsEffect(shadow_effect3);
+//    ui->LABEL_SELF->setGraphicsEffect(shadow_effect4);
 
-    ui->BTN_REFRESH->setStyleSheet("QPushButton{background-color:black;\
-                                                color: white;   border-radius: 10px;  border: 2px groove gray;\
-                                                border-style: outset;}"
-                                                "QPushButton:hover{background-color:white; color: black;}"
-                                                "QPushButton:pressed{background-color:rgb(85, 170, 255);\
-                                                 border-style: inset; }"
-                                               );
-    ui->BTN_SEND->setStyleSheet("QPushButton{background-color:black;\
-                                            color: white;   border-radius: 10px;  border: 2px groove gray;\
-                                            border-style: outset;}"
-                                            "QPushButton:hover{background-color:white; color: black;}"
-                                            "QPushButton:pressed{background-color:rgb(85, 170, 255);\
-                                             border-style: inset; }"
-                                           );
-     ui->BTN_SESSION_CLOSE->setStyleSheet("QPushButton{background-color:black;\
-                                             color: white;   border-radius: 10px;  border: 2px groove gray;\
-                                             border-style: outset;}"
-                                             "QPushButton:hover{background-color:white; color: black;}"
-                                             "QPushButton:pressed{background-color:rgb(85, 170, 255);\
-                                              border-style: inset; }"
-                                            );
-    this->setWindowFlags(Qt::FramelessWindowHint);
+    ui->BTN_REFRESH->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
+                                   "QPushButton:hover{background-color:white; color: black;}"
+                                   "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+    ui->BTN_SEND->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
+                                   "QPushButton:hover{background-color:white; color: black;}"
+                                   "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+    ui->BTN_SESSION_CLOSE->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
+                                   "QPushButton:hover{background-color:white; color: black;}"
+                                   "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+    ui->BTN_MIN->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
+                                   "QPushButton:hover{background-color:white; color: black;}"
+                                   "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+    ui->BTN_WINDOW_CLOSE->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
+                                   "QPushButton:hover{background-color:white; color: black;}"
+                                   "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+    ui->BTN_SEND_PIC->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
+                                   "QPushButton:hover{background-color:white; color: black;}"
+                                   "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+    this->setWindowFlags(Qt::FramelessWindowHint);//无边框
+    /* 设置阴影必须带上这一句 */
     this->setAttribute(Qt::WA_TranslucentBackground);
     /* 直接使用资源文件的资源，路径则为... */
     this->setStyleSheet("QMainWindow{background-image: url(:/src/bg_4.png)}");
+    //ui->pushButton->setStyleSheet("QPushButton{border-radius:5px;border-width:0px;}");           设置透明
     }
 
-    m_istrue = true;
     m_pFindTerminal = new FindTerminal;
     m_pFindTerminal->AddBrowser(ui->LIST_HOST);
     m_pTextChat = new TextChat;
@@ -191,9 +188,8 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     p++;
     while (*p!=')')
     {
-        ip[iplen] = *p;
+        ip[iplen++] = *p;
         ++p;
-        iplen++;
     }
     ip[iplen] = '\0';
     qDebug() << QString(ip);
@@ -203,13 +199,10 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
 
 void MainWindow::on_BTN_SEND_clicked()
 {
-//    m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
-//    ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+
-//                                 ui->TEXT_MSG_SEND->toPlainText());
-
+    m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
-                + TIME_FRONT_SELF + m_peerhost.hostname + TEXT_BACK
+                + TIME_FRONT_SELF + QHostInfo::localHostName() + TEXT_BACK
                 + TEXT_FRONT_SELF + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK);
     ui->TEXT_MSG_SEND->clear();
 }
@@ -224,6 +217,11 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
     ui->TEXT_MSG_RECORD->setEnabled(false);
     ui->TEXT_MSG_SEND->setEnabled(false);
     ui->BTN_SEND->setEnabled(false);
+}
+
+void MainWindow::on_BTN_SEND_PIC_clicked()
+{
+
 }
 
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
@@ -276,7 +274,7 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->TEXT_MSG_SEND->setEnabled(true);
         ui->BTN_SEND->setEnabled(true);
         ui->LABEL_CHAT_WITH_WHO->setText(peerhost.hostname);
-
+        /* 获得对端信息 */
         m_peerhost = peerhost;
     }
     else
@@ -284,6 +282,8 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
     }
 }
+
+
 
 
 
