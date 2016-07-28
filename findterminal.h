@@ -83,7 +83,7 @@ private:
     QTimer *m_pTimer;
     /* 本地用户网卡接口列表(终端有多个网卡时，选择其中一个),也可能只有一个，那么不提供选择 */
     QHostInfo m_host;
-    /* 在线用户列表 */
+    /* 在线用户列表,int为ip对应的整形 */
     QMap<int, chat_host_t> m_hostmap;
 };
 

@@ -72,6 +72,7 @@ void FindTerminal::RefreshHostList()
 {
     /* 先清空map */
     m_hostmap.clear();
+    m_pWidget->clear();
     this->slot_send_msg();
 }
 

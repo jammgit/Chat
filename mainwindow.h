@@ -48,6 +48,8 @@ private slots:  /* ------------窗口控件槽函数---------------- */
 
     void on_BTN_WINDOW_CLOSE_clicked();
 
+    void on_BTN_MIN_clicked();
+
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
     void slot_request_result(bool ret);

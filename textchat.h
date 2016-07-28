@@ -6,6 +6,9 @@
 #include <QtNetwork/QTcpSocket>
 #include <QHostAddress>
 #include <QMessageBox>
+#include <QHostInfo>
+
+#include "findterminal.h"
 
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888
@@ -22,6 +25,11 @@ public:
     void ConnectHost(const QHostAddress &addr);
     /* 发送信息函数 */
     int SendMsg(QString text);
+    /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
+    void SetFindTerminal(FindTerminal *ter)
+    {
+        m_pTer = ter;
+    }
 
     /* 是否已建立连接,注意：是否能够开始聊天 和 是否建立连接是两回事，
      * 建立连接之后，还需要等待对方接受请求才能开始聊天。
@@ -57,6 +65,8 @@ private:
     QTcpServer *m_pListen;
     /* 连接套接字 */
     QTcpSocket *m_pConn;
+    /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
+    FindTerminal *m_pTer;
 };
 
 #endif // TEXTCHAT_H

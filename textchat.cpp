@@ -22,6 +22,7 @@ void TextChat::__Init()
 {
     m_isConnect = false;
     m_pConn = nullptr;
+    m_pTer = nullptr;
     m_pListen = new QTcpServer;
     if (!m_pListen)
     {
@@ -49,7 +50,6 @@ void TextChat::ConnectHost(const QHostAddress &addr)
         m_pConn = new QTcpSocket;
         m_pConn->open(QIODevice::ReadWrite);
         m_pConn->connectToHost(addr, TEXTCHAT_SERVER_PORT);
-
         connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
     }
 }
@@ -85,26 +85,26 @@ void TextChat::slot_is_accept()
         {
             m_pConn = m_pListen->nextPendingConnection();
             QMessageBox::StandardButton btn;
-            emit this->signal_request_arrive(QString("用户：")+m_pConn->peerName()+"("+m_pConn->peerAddress().toString()+")"
-                                             +"发起聊天请求，是否接受请求？", btn);
+            qDebug() << "peername" << m_pConn->peerName();
 
-            connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+            /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
+            emit this->signal_request_arrive(QString("用户：")
+                                             + (m_pTer==nullptr?"":(m_pTer->GetMap()[m_pConn->peerAddress().toString().toInt()]).hostname)
+                                             + "("+m_pConn->peerAddress().toString()+")"
+                                             + "发起聊天请求，是否接受请求？", btn);
+
+
             m_pConn->open(QIODevice::ReadWrite);
             /* 接受请求 */
             if (btn == QMessageBox::Yes)
             {
-
+                connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
                 m_pConn->write(ACCEPT, strlen(ACCEPT));
                 m_isConnect = true;
             }
             else
             {/* 不接受请求 */
                 m_pConn->write(REJECT, strlen(REJECT));
-                /* 先关闭关联再delete */
-                disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
-                m_pConn->close();
-                delete m_pConn;
-                m_pConn = nullptr;
             }
         }
     }
@@ -113,18 +113,19 @@ void TextChat::slot_is_accept()
 
 void TextChat::slot_recv_msg()
 {
+    qDebug() << "result come";
     /* 请求信息 */
     if (!m_isConnect && m_pConn)
     {
         QString str(m_pConn->readAll());
         if (str == QString(ACCEPT))
-        {
+        {/* 请求发起者 */
             m_isConnect = true;
             /* 提示请求成功 */
             emit this->signal_request_result(true);
         }
-        else
-        {/* 不接受请求，则释放socket */
+        else if (str == QString(REJECT))
+        {/* 请求发起者：不接受请求，则释放socket */
             /* 先关闭关联再delete */
             disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
             m_pConn->close();
@@ -132,6 +133,12 @@ void TextChat::slot_recv_msg()
             m_pConn = nullptr;
             /* 提示请求失败 */
             emit this->signal_request_result(false);
+        }
+        else
+        {/* 被请求者 */
+            m_pConn->close();
+            delete m_pConn;
+            m_pConn = nullptr;
         }
     }
     else /* 聊天消息 */

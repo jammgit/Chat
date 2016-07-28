@@ -20,6 +20,14 @@ void MainWindow::__Init()
 
     {
     /* 初始化控件 */
+    ui->TEXT_MSG_RECORD->setEnabled(false);
+    ui->TEXT_MSG_SEND->setEnabled(false);
+    ui->BTN_SEND->setEnabled(false);
+
+    QPalette pa;
+    pa.setColor(QPalette::WindowText,QColor(0,180,180));
+    ui->LABEL_CHAT_WITH_WHO->setPalette(pa);
+
     ui->TEXT_MSG_RECORD->setReadOnly(true);
     QPalette pl = ui->TEXT_MSG_RECORD->palette();
     pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
@@ -87,6 +95,7 @@ void MainWindow::__Init()
     m_pFindTerminal = new FindTerminal;
     m_pFindTerminal->AddBrowser(ui->LIST_HOST);
     m_pTextChat = new TextChat;
+    m_pTextChat->SetFindTerminal(m_pFindTerminal);
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool)), this, SLOT(slot_request_result(bool)));
     connect(m_pTextChat, SIGNAL(signal_request_arrive(QString,QMessageBox::StandardButton&)),
@@ -180,6 +189,11 @@ void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     this->close();
 }
+void MainWindow::on_BTN_MIN_clicked()
+{
+    this->showMinimized();
+}
+
 ////////////////////////////////////////////////////////////////////////
 /// 文本消息槽函数
 ////////////////////////////////////////////////////////////////////////
@@ -208,12 +222,17 @@ void MainWindow::slot_request_result(bool ret)
     if (ret)
     {/* 聊天请求被接受 */
         QMessageBox::information(this, "请求成功", "对方已接受聊天请求，现在可以开始聊天");
+        ui->TEXT_MSG_RECORD->setEnabled(true);
+        ui->TEXT_MSG_SEND->setEnabled(true);
+        ui->BTN_SEND->setEnabled(true);
     }
     else
     {/* 聊天请求被拒绝 */
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
     }
 }
+
+
 
 
 
