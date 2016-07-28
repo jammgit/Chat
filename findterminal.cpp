@@ -45,7 +45,7 @@ void FindTerminal::__Init()
     m_pMultiRecv->open(QIODevice::ReadOnly);
     m_pSingleRecv = new QUdpSocket(this);
 
-    /* 单播接受所有ipv4且端口是9999的数据 */
+    /* 单播接受所有ipv4且端口是7777的数据 */
     m_pSingleRecv->bind(QHostAddress::AnyIPv4, SINGLE_PORT,
                        QUdpSocket::ReuseAddressHint | QUdpSocket::ShareAddress);
     connect(m_pSingleRecv, SIGNAL(readyRead()), this, SLOT(slot_recv_single_msg()));
@@ -123,7 +123,7 @@ void FindTerminal::__Recv_Msg(QUdpSocket *socket, QHostAddress *address)
         foreach (QHostAddress a, m_host.addresses()) {
             if (a.toString() == addr.toString())
             {
-                qDebug() << "Equal local host";
+                //qDebug() << "Equal local host";
                 return;
             }
         }

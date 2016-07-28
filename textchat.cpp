@@ -11,10 +11,12 @@ TextChat::~TextChat()
 {
     if (m_pConn)
     {
-        /* 先关闭关联再delete */
         disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+        m_pConn->close();
         delete m_pConn;
     }
+    disconnect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_is_accept()));
+    m_pListen->close();
     delete m_pListen;
 }
 
@@ -64,9 +66,10 @@ int TextChat::SendMsg(QString text)
         if (ret == -1)
         {
             QMessageBox::information(nullptr, QString("错误"), QString("通信出现错误，请重新连接"));
-            m_pConn->close();
-            /* 先关闭关联再delete */
             disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+            m_pConn->disconnectFromHost();
+            m_pConn->waitForDisconnected();
+            m_pConn->close();
             delete m_pConn;
             m_pConn = nullptr;
             m_isConnect = false;
@@ -85,20 +88,17 @@ void TextChat::slot_is_accept()
         {
             m_pConn = m_pListen->nextPendingConnection();
             QMessageBox::StandardButton btn;
-            qDebug() << "peername" << m_pConn->peerName();
 
             /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
             emit this->signal_request_arrive(QString("用户：")
                                              + (m_pTer==nullptr?"":(m_pTer->GetMap()[m_pConn->peerAddress().toString().toInt()]).hostname)
                                              + "("+m_pConn->peerAddress().toString()+")"
                                              + "发起聊天请求，是否接受请求？", btn);
-
-
             m_pConn->open(QIODevice::ReadWrite);
+            connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
             /* 接受请求 */
             if (btn == QMessageBox::Yes)
             {
-                connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
                 m_pConn->write(ACCEPT, strlen(ACCEPT));
                 m_isConnect = true;
             }
@@ -127,7 +127,10 @@ void TextChat::slot_recv_msg()
         else if (str == QString(REJECT))
         {/* 请求发起者：不接受请求，则释放socket */
             /* 先关闭关联再delete */
+            qDebug() << "请求者关闭连接";
             disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+            m_pConn->disconnectFromHost();
+            m_pConn->waitForDisconnected();
             m_pConn->close();
             delete m_pConn;
             m_pConn = nullptr;
@@ -135,7 +138,11 @@ void TextChat::slot_recv_msg()
             emit this->signal_request_result(false);
         }
         else
-        {/* 被请求者 */
+        {/* 被请求者，注意：主动关闭应该有请求者发出，不然服务端口会处于timewait状态 */
+            qDebug() << "被请求者关闭连接";
+            disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+            m_pConn->disconnectFromHost();
+            m_pConn->waitForDisconnected();
             m_pConn->close();
             delete m_pConn;
             m_pConn = nullptr;
@@ -148,6 +155,8 @@ void TextChat::slot_recv_msg()
         {/* 对端关闭连接 */
             /* 先关闭关联再delete */
             disconnect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+            m_pConn->disconnectFromHost();
+            m_pConn->waitForDisconnected();
             m_pConn->close();
             delete m_pConn;
             m_pConn = nullptr;
