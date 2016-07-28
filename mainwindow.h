@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QFileDialog>
 #include <QtMath>
 #include <QGraphicsDropShadowEffect>
 #include <string>

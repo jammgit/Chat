@@ -20,7 +20,12 @@ void MainWindow::__Init()
 
     {
     /* 初始化控件 */
-    ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><img src=\"src/bg_1.png\" height=\"100\" width=\"100\"><p>"));
+    //ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><img src=\"src/bg_1.png\" height=\"100\" width=\"100\"><p>"));
+    /* set border */
+    //ui->LABEL_SELF->setFrameShape (QFrame::Box);
+    //ui->LABEL_OTHER->setFrameShape (QFrame::Box);
+    ui->LABEL_SELF->setStyleSheet("border: 1px solid  #000000");
+    ui->LABEL_OTHER->setStyleSheet("border: 1px solid  #000000");
 
     ui->TEXT_MSG_SEND->installEventFilter(this);
     ui->TEXT_MSG_RECORD->setEnabled(false);
@@ -54,19 +59,9 @@ void MainWindow::__Init()
     shadow_effect2->setOffset(-5, 5);
     shadow_effect2->setColor(Qt::black);
     shadow_effect2->setBlurRadius(8);
-//    QGraphicsDropShadowEffect *shadow_effect3 = new QGraphicsDropShadowEffect(this);
-//    shadow_effect3->setOffset(-5, 5);
-//    shadow_effect3->setColor(Qt::gray);
-//    shadow_effect3->setBlurRadius(8);
-//    QGraphicsDropShadowEffect *shadow_effect4 = new QGraphicsDropShadowEffect(this);
-//    shadow_effect4->setOffset(-5, 5);
-//    shadow_effect4->setColor(Qt::gray);
-//    shadow_effect4->setBlurRadius(8);
     ui->TEXT_MSG_RECORD->setGraphicsEffect(shadow_effect);
     ui->TEXT_MSG_SEND->setGraphicsEffect(shadow_effect1);
     ui->LIST_HOST->setGraphicsEffect(shadow_effect2);
-//    ui->LABEL_OTHER->setGraphicsEffect(shadow_effect3);
-//    ui->LABEL_SELF->setGraphicsEffect(shadow_effect4);
 
     ui->BTN_REFRESH->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
                                    "QPushButton:hover{background-color:white; color: black;}"
@@ -197,6 +192,7 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
 }
 
+/* */
 void MainWindow::on_BTN_SEND_clicked()
 {
     m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
@@ -218,10 +214,22 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
     ui->TEXT_MSG_SEND->setEnabled(false);
     ui->BTN_SEND->setEnabled(false);
 }
-
+/* */
 void MainWindow::on_BTN_SEND_PIC_clicked()
 {
-
+    QStringList   fileNameList;
+    QFileDialog* fd = new QFileDialog(this);        //创建对话框
+    fd->resize(240,320);                            //设置显示的大小
+    fd->setNameFilter("Image Files(*.png *.jpg)");  //设置文件过滤器
+    fd->setFileMode(QFileDialog::ExistingFiles);
+    fd->setViewMode(QFileDialog::List);             //设置浏览模式，有 列表（list） 模式和 详细信息（detail）两种方式
+    if ( fd->exec() == QDialog::Accepted )          //如果成功的执行
+    {
+        fileNameList = fd->selectedFiles();         //返回文件列表的名称
+    }
+    else
+        fd->close();
+    qDebug() << fileNameList;
 }
 
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
@@ -250,7 +258,6 @@ void MainWindow::slot_peer_close()
 
 void MainWindow::slot_recv_text_msg(QString text)
 {
-    //ui->TEXT_MSG_RECORD->setText(ui->TEXT_MSG_RECORD->toPlainText()+'\n'+text);
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
                 + TIME_FRONT_OTHER + m_peerhost.hostname + TEXT_BACK

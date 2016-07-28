@@ -15,5 +15,10 @@
         <file>src/sessionclose.png</file>
         <file>src/windowclose_2.png</file>
         <file>src/windowicon.png</file>
+        <file>src/noimage_1.png</file>
+        <file>src/noimage_2.png</file>
+        <file>src/noimage_3.png</file>
+        <file>src/min_2.png</file>
+        <file>src/windowclose_3.png</file>
     </qresource>
 </RCC>
