@@ -34,6 +34,7 @@ public:
     void mousePressEvent(QMouseEvent *event);
     void mouseMoveEvent(QMouseEvent *event);
     void paintEvent(QPaintEvent *);
+    bool eventFilter(QObject *obj, QEvent *e);
 
 private:
     void __Init();
@@ -49,6 +50,8 @@ private slots:  /* ------------窗口控件槽函数---------------- */
     void on_BTN_WINDOW_CLOSE_clicked();
 
     void on_BTN_MIN_clicked();
+
+    void on_BTN_SESSION_CLOSE_clicked();
 
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
@@ -70,6 +73,8 @@ private:
     FindTerminal *m_pFindTerminal;
     /* 文本聊天接口 */
     TextChat *m_pTextChat;
+    /* 正在聊天的对端用户名 */
+    QString m_peername;
 };
 
 #endif // MAINWINDOW_H

@@ -12,8 +12,9 @@
 
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888
-#define ACCEPT "accept"
-#define REJECT "reject"
+#define ACCEPT QString("accept").toUtf8()
+#define REJECT QString("reject").toUtf8()
+#define CLOSE  QString("close$%#_*!^").toUtf8()
 
 class TextChat : public QObject
 {
@@ -23,6 +24,8 @@ public:
     ~TextChat();
     /* 建立连接函数 */
     void ConnectHost(const QHostAddress &addr);
+    /* 断开聊天，此时需要注意避开服务端主动断开的timewait状态 */
+    void Close();
     /* 发送信息函数 */
     int SendMsg(QString text);
     /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */

@@ -20,6 +20,7 @@ void MainWindow::__Init()
 
     {
     /* 初始化控件 */
+    ui->TEXT_MSG_SEND->installEventFilter(this);
     ui->TEXT_MSG_RECORD->setEnabled(false);
     ui->TEXT_MSG_SEND->setEnabled(false);
     ui->BTN_SEND->setEnabled(false);
@@ -122,6 +123,21 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     }
 }
 
+bool MainWindow::eventFilter(QObject *obj, QEvent *e)
+{
+    Q_ASSERT(obj == ui->TEXT_MSG_SEND);
+    if (e->type() == QEvent::KeyPress)
+    {
+        QKeyEvent *event = static_cast<QKeyEvent*>(e);
+        if (event->key() == Qt::Key_Return && (event->modifiers() & Qt::ControlModifier))
+        {
+            this->on_BTN_SEND_clicked();
+            return true;
+        }
+    }
+    return false;
+}
+
 void MainWindow::paintEvent(QPaintEvent *event)
 {
     event = event;
@@ -164,8 +180,14 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     int iplen=0;
     const char *p = stdstr.c_str();
     while (*p!='(')
+    {
+        ip[iplen++] = *p;
         p++;
+    }
     p++;
+    ip[iplen] = '\0';
+    m_peername = QString(ip);
+    iplen = 0;
     while (*p!=')')
     {
         ip[iplen] = *p;
@@ -185,6 +207,19 @@ void MainWindow::on_BTN_SEND_clicked()
                                  ui->TEXT_MSG_SEND->toPlainText());
     ui->TEXT_MSG_SEND->clear();
 }
+
+void MainWindow::on_BTN_SESSION_CLOSE_clicked()
+{
+    m_pTextChat->Close();
+    ui->LABEL_CHAT_WITH_WHO->setText("");
+    QMessageBox::information(this, "提示", "聊天结束");
+    ui->TEXT_MSG_RECORD->clear();
+    ui->TEXT_MSG_SEND->clear();
+    ui->TEXT_MSG_RECORD->setEnabled(false);
+    ui->TEXT_MSG_SEND->setEnabled(false);
+    ui->BTN_SEND->setEnabled(false);
+}
+
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     this->close();
@@ -202,6 +237,10 @@ void MainWindow::slot_peer_close()
     QMessageBox::information(this, "聊天关闭", "对方结束了聊天");
     ui->TEXT_MSG_RECORD->clear();
     ui->TEXT_MSG_SEND->clear();
+    ui->TEXT_MSG_RECORD->setEnabled(false);
+    ui->TEXT_MSG_SEND->setEnabled(false);
+    ui->BTN_SEND->setEnabled(false);
+    ui->LABEL_CHAT_WITH_WHO->setText("");
 }
 
 void MainWindow::slot_recv_text_msg(QString text)
@@ -221,16 +260,19 @@ void MainWindow::slot_request_result(bool ret)
 {
     if (ret)
     {/* 聊天请求被接受 */
-        QMessageBox::information(this, "请求成功", "对方已接受聊天请求，现在可以开始聊天");
+        QMessageBox::information(this, "请求成功", "现在可以开始聊天");
         ui->TEXT_MSG_RECORD->setEnabled(true);
         ui->TEXT_MSG_SEND->setEnabled(true);
         ui->BTN_SEND->setEnabled(true);
+        ui->LABEL_CHAT_WITH_WHO->setText(m_peername);
     }
     else
     {/* 聊天请求被拒绝 */
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
     }
 }
+
+
 
 
 

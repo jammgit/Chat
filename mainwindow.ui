@@ -143,7 +143,7 @@
      </font>
     </property>
     <property name="text">
-     <string>聊天框</string>
+     <string/>
     </property>
    </widget>
    <widget class="QPushButton" name="BTN_SESSION_CLOSE">
