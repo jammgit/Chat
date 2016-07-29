@@ -39,6 +39,7 @@ void MainWindow::__Init()
         pa.setColor(QPalette::WindowText,QColor(0,180,180));
         ui->LABEL_CHAT_WITH_WHO->setPalette(pa);
 
+        /* 设置透明 */
         ui->TEXT_MSG_RECORD->setReadOnly(true);
         QPalette pl = ui->TEXT_MSG_RECORD->palette();
         pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
@@ -50,6 +51,18 @@ void MainWindow::__Init()
         pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
         ui->LIST_HOST->setPalette(pl);
 
+
+
+        QScrollBar *sroll = ui->TEXT_MSG_RECORD->verticalScrollBar();
+        sroll->setMinimum(0);
+        sroll->setMaximum(100);
+
+//        sroll = ui->TEXT_MSG_SEND->verticalScrollBar();
+//        sroll->setSliderPosition(sroll->maximum());
+
+        ui->TEXT_MSG_SEND->verticalScrollBar()->setStyleSheet("background:red; color: blue;");
+
+        /* 设置阴影 */
         QGraphicsDropShadowEffect *shadow_effect = new QGraphicsDropShadowEffect(this);
         shadow_effect->setOffset(-5, 5);
         shadow_effect->setColor(Qt::black);
@@ -94,21 +107,23 @@ void MainWindow::__Init()
         this->setStyleSheet("QMainWindow{background-image: url(:/src/bg_4.png)}");
         //ui->pushButton->setStyleSheet("QPushButton{border-radius:5px;border-width:0px;}");           设置透明
     }
-
+    /* 没TIME_DISPLAY_SPACE秒显示一次时间 */
     m_pTimeSpace = new QTimer;
     connect(m_pTimeSpace, SIGNAL(timeout()), this, SLOT(slot_show_time()));
     m_isshow = true;
 
-    m_pVideo = new VideoDisplay();
+
     /* 没两秒提升video窗口，暂时没其他办法 */
     m_pTimer = new QTimer;
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(slot_raise_video()));
     m_pTimer->start(1000);
-
+    /* 初始化 视频、多播、文本聊天接口 */
+    m_pVideo = new VideoDisplay();
     m_pFindTerminal = new FindTerminal;
     m_pFindTerminal->AddBrowser(ui->LIST_HOST);
     m_pTextChat = new TextChat;
     m_pTextChat->SetFindTerminal(m_pFindTerminal);
+
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
             this, SLOT(slot_request_result(bool, const chat_host_t&)));
@@ -170,11 +185,9 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
 /* 文本框快捷键设置 */
 bool MainWindow::eventFilter(QObject *obj, QEvent *e)
 {
-    qDebug() << "enter";
     Q_ASSERT(obj == ui->TEXT_MSG_SEND);
     if (e->type() == QEvent::KeyPress)
     {
-        qDebug() << "key press";
         QKeyEvent *event = static_cast<QKeyEvent*>(e);
         /* Key_Enter is in small key(number)*/
         if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) && (event->modifiers() & Qt::ShiftModifier))
@@ -254,7 +267,6 @@ void MainWindow::on_BTN_SEND_clicked()
     if (ui->TEXT_MSG_SEND->toPlainText().size() == 0)
         return ;
 
-
     if (m_isshow)
     {
         ui->TEXT_MSG_RECORD->setHtml(
@@ -266,7 +278,7 @@ void MainWindow::on_BTN_SEND_clicked()
     }
     ui->TEXT_MSG_RECORD->setHtml(
             ui->TEXT_MSG_RECORD->toHtml()
-            + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR, FONT_SIZE) + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK
+            + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_2, FONT_SIZE) + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK
             );
 
     m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
@@ -337,7 +349,7 @@ void MainWindow::on_BTN_VIDEO_clicked()
 void MainWindow::slot_raise_video()
 {
     m_pVideo==nullptr?0:(m_pVideo->GetViewfinder()->raise(),0);
-    if (m_pVideo->CameraIsOpen() && m_pVideo->GetViewfinder()->isHidden() && !this->isHidden())
+    if (m_pVideo->CameraIsOpen() && m_pVideo->GetViewfinder()->isHidden() && !this->isMinimized())
     {
         m_pVideo->GetViewfinder()->show();
     }
@@ -358,24 +370,31 @@ void MainWindow::slot_peer_close()
 /* 接受消息 */
 void MainWindow::slot_recv_text_msg(QList<QString>& text)
 {
-    QDateTime time = QDateTime::fromString(text.front());
-    text.pop_front();
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(0);
+
     if (m_isshow)
     {
         ui->TEXT_MSG_RECORD->setHtml(
                     ui->TEXT_MSG_RECORD->toHtml()
-                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + time.toString() + TEXT_BACK);
+                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) +text.front() + TEXT_BACK);
+        text.pop_front();
         m_pTimeSpace->start(TIME_DISPLAY_SPACE);
         m_isshow = false;
     }
+    else
+        text.pop_front();
+
+    QString all;
     while (!text.empty())
     {
-        ui->TEXT_MSG_RECORD->setHtml(
-                    ui->TEXT_MSG_RECORD->toHtml()
-                    + TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR, FONT_SIZE) + text.front() + TEXT_BACK
-                    );
+        all += TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR, FONT_SIZE) + text.front() + TEXT_BACK;
         text.pop_front();
     }
+    ui->TEXT_MSG_RECORD->setHtml(ui->TEXT_MSG_RECORD->toHtml()+ all);
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
+
 }
 
 /* 聊天请求到达 */
@@ -413,4 +432,5 @@ void MainWindow::slot_send_error()
 void MainWindow::slot_show_time()
 {
     m_isshow = true;
+
 }

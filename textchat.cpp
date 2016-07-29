@@ -154,7 +154,7 @@ void TextChat::slot_is_accept()
 
 void TextChat::slot_recv_msg()
 {
-    qDebug() << "result come";
+    //qDebug() << "result come";
     /* 请求信息 */
     if (!m_isConnect && m_pConn)
     {
@@ -215,6 +215,7 @@ void TextChat::slot_recv_msg()
 
                 QList<QString> textlist;
                 textlist.push_back(QByteArray::fromBase64(strlist.front().toLatin1()));
+                strlist.pop_front();
                 int i = 1;
                 while (strlist.size() != 1)     // 最后一个是空的，省略
                 {
