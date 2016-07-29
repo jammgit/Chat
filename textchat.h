@@ -58,6 +58,8 @@ signals:
     void signal_recv_msg(QString text);
     /* 关闭连接信号函数 */
     void signal_peer_close();
+    /* 发送出错，对方已关闭 */
+    void signal_send_error();
 
 private slots:
     /* connect成功,那么建立readyread，否则error()被发送 */

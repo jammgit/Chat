@@ -47,7 +47,10 @@ public:
     bool eventFilter(QObject *obj, QEvent *e);
 
 private:
+    /* 初始化控件，信号 */
     void __Init();
+    /* 设置聊天框环境 */
+    void __Set_Session(bool yes);
 
 private slots:  /* ------------窗口控件槽函数---------------- */
     /* 刷新好友列表 */
@@ -74,6 +77,8 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_recv_text_msg(QString text);
     /* 关闭连接信号函数 */
     void slot_peer_close();
+    /* 通信出错 */
+    void slot_send_error();
 
 public slots: /* --------------视频信息槽函数---------------- */
 

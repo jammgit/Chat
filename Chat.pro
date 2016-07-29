@@ -17,14 +17,12 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     findterminal.cpp \
     mylistwidget.cpp \
-    textchat.cpp \
-    mytextedit.cpp
+    textchat.cpp
 
 HEADERS  += mainwindow.h \
     findterminal.h \
     mylistwidget.h \
-    textchat.h \
-    mytextedit.h
+    textchat.h
 
 FORMS    += mainwindow.ui
 

@@ -54,8 +54,8 @@ void TextChat::ConnectHost(const QHostAddress &addr)
         m_pConn->connectToHost(addr, TEXTCHAT_SERVER_PORT);
 
         connect(m_pConn, SIGNAL(connected()), this, SLOT(slot_connect_success()));
-        connect(m_pConn, SIGNAL(error(QAbstractSocket::SocketError)),
-                this, SLOT(slot_connect_failed(QAbstractSocket::SocketError)));
+//        connect(m_pConn, SIGNAL(error(QAbstractSocket::SocketError)),
+//                this, SLOT(slot_connect_failed(QAbstractSocket::SocketError)));
 
     }
 }
@@ -65,7 +65,7 @@ void TextChat::slot_connect_success()
 {
     connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
 }
-/* 请求失败时，error()信号的槽函数 */
+/* error()信号的槽函数，暂不使用 */
 void TextChat::slot_connect_failed(QAbstractSocket::SocketError err)
 {
     err = err;
@@ -109,6 +109,7 @@ int TextChat::SendMsg(QString text)
             delete m_pConn;
             m_pConn = nullptr;
             m_isConnect = false;
+            emit this->signal_send_error();
         }
         return ret;
     }
@@ -199,7 +200,7 @@ void TextChat::slot_recv_msg()
         {
             if (str == QString(CLOSE))          //非Base64编码,但不可能接收到CLOSE字符串
             {/* 对端关闭连接 */
-                qDebug() << "对端关闭连接";
+                qDebug() << "对端关闭连接 by CLOSE";
                 m_pConn->close();
                 delete m_pConn;
                 m_pConn = nullptr;
@@ -210,7 +211,7 @@ void TextChat::slot_recv_msg()
             else                                 //Base64编码
             {
                 QList<QString> strlist = str.split(':');
-                while (strlist.size() != 0)
+                while (strlist.size() != 1)     // 最后一个是空的，省略
                 {
                     emit this->signal_recv_msg(
                                 QByteArray::fromBase64(strlist.front().toLatin1()));
