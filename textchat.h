@@ -11,6 +11,7 @@
 #include <QDate>
 
 #include "findterminal.h"
+#include "msgtype.h"
 
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888

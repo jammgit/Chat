@@ -5,7 +5,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QFileDialog>
-#include <QScrollbar>
+#include <QScrollBar>
 #include <QtMath>
 #include <QGraphicsDropShadowEffect>
 #include <string>
@@ -33,7 +33,7 @@
 #define RIGHT               "right"
 #define LEFT                "left"
 #define CENTER              "center"
-#define TEXT_COLOR          "#303030"
+#define TEXT_COLOR          "#505050"
 #define TEXT_COLOR_2        "#000000"
 #define NAME_COLOR          "#0099FF"
 #define TIME_COLOR          "#123456"

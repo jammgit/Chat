@@ -22,5 +22,6 @@
         <file>src/windowclose_3.png</file>
         <file>src/closevideo.png</file>
         <file>src/openvideo.png</file>
+        <file>src/emoji.png</file>
     </qresource>
 </RCC>

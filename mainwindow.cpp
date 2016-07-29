@@ -28,12 +28,14 @@ void MainWindow::__Init()
         ui->LABEL_SELF->setStyleSheet("border: 1px solid  #000000");
         ui->LABEL_OTHER->setStyleSheet("border: 1px solid  #000000");
 
+        /* set event for key */
         ui->TEXT_MSG_SEND->installEventFilter(this);
         ui->TEXT_MSG_RECORD->setEnabled(false);
         ui->TEXT_MSG_SEND->setEnabled(false);
         ui->BTN_SEND->setEnabled(false);
         ui->BTN_SEND_PIC->setEnabled(false);
         ui->BTN_SESSION_CLOSE->setEnabled(false);
+        ui->BTN_SEND_EMOJI->setEnabled(false);
 
         QPalette pa;
         pa.setColor(QPalette::WindowText,QColor(0,180,180));
@@ -51,16 +53,17 @@ void MainWindow::__Init()
         pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
         ui->LIST_HOST->setPalette(pl);
 
-
-
+        /* init vertical scroll style */
+        QFile file("./qss/vscroll.qss");
+        file.open(QFile::ReadOnly);
+        QString str(file.readAll());
+        file.close();
         QScrollBar *sroll = ui->TEXT_MSG_RECORD->verticalScrollBar();
         sroll->setMinimum(0);
         sroll->setMaximum(100);
-
-//        sroll = ui->TEXT_MSG_SEND->verticalScrollBar();
-//        sroll->setSliderPosition(sroll->maximum());
-
-        ui->TEXT_MSG_SEND->verticalScrollBar()->setStyleSheet("background:red; color: blue;");
+        sroll->setStyleSheet(str);
+        sroll = ui->TEXT_MSG_SEND->verticalScrollBar();
+        sroll->setStyleSheet(str);
 
         /* 设置阴影 */
         QGraphicsDropShadowEffect *shadow_effect = new QGraphicsDropShadowEffect(this);
@@ -79,27 +82,20 @@ void MainWindow::__Init()
         ui->TEXT_MSG_SEND->setGraphicsEffect(shadow_effect1);
         ui->LIST_HOST->setGraphicsEffect(shadow_effect2);
 
-        ui->BTN_REFRESH->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
-        ui->BTN_SEND->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
-        ui->BTN_SESSION_CLOSE->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
-        ui->BTN_MIN->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
-        ui->BTN_WINDOW_CLOSE->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
-        ui->BTN_SEND_PIC->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
-        ui->BTN_VIDEO->setStyleSheet("QPushButton{color: white;   border-radius: 15px; border-style: outset;}"
-                                       "QPushButton:hover{background-color:white; color: black;}"
-                                       "QPushButton:pressed{background-color:rgb(85, 170, 255);border-style:inset;}");
+        /* set button style */
+        QFile f("./qss/pushbutton.qss");
+        f.open(QFile::ReadOnly);
+        str = f.readAll();
+        f.close();
+        ui->BTN_REFRESH->setStyleSheet(str);
+        ui->BTN_SEND->setStyleSheet(str);
+        ui->BTN_SESSION_CLOSE->setStyleSheet(str);
+        ui->BTN_MIN->setStyleSheet(str);
+        ui->BTN_WINDOW_CLOSE->setStyleSheet(str);
+        ui->BTN_SEND_PIC->setStyleSheet(str);
+        ui->BTN_VIDEO->setStyleSheet(str);
+        ui->BTN_SEND_EMOJI->setStyleSheet(str);
+
         this->setWindowFlags(Qt::FramelessWindowHint );//无边框
         /* 设置阴影必须带上这一句 */
         this->setAttribute(Qt::WA_TranslucentBackground);
@@ -133,6 +129,7 @@ void MainWindow::__Init()
     connect(m_pTextChat, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
     connect(m_pTextChat, SIGNAL(signal_send_error()), this, SLOT(slot_send_error()));
 }
+
 /* 设置聊天环境 */
 void MainWindow::__Set_Session(bool yes)
 {
@@ -143,6 +140,7 @@ void MainWindow::__Set_Session(bool yes)
         ui->BTN_SEND->setEnabled(true);
         ui->BTN_SEND_PIC->setEnabled(true);
         ui->BTN_SESSION_CLOSE->setEnabled(true);
+        ui->BTN_SEND_EMOJI->setEnabled(true);
         ui->LABEL_CHAT_WITH_WHO->setText(m_peerhost.hostname);
     }
     else
@@ -154,9 +152,11 @@ void MainWindow::__Set_Session(bool yes)
         ui->BTN_SEND->setEnabled(false);
         ui->BTN_SEND_PIC->setEnabled(false);
         ui->BTN_SESSION_CLOSE->setEnabled(false);
+        ui->BTN_SEND_EMOJI->setEnabled(false);
         ui->LABEL_CHAT_WITH_WHO->setText("");
     }
 }
+
 /* 窗口移动 */
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
@@ -170,6 +170,7 @@ void MainWindow::mousePressEvent(QMouseEvent *event)
         event->accept();
     }
 }
+
 /* 窗口移动 */
 void MainWindow::mouseMoveEvent(QMouseEvent *event)
 {
@@ -182,6 +183,7 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
         event->accept();
     }
 }
+
 /* 文本框快捷键设置 */
 bool MainWindow::eventFilter(QObject *obj, QEvent *e)
 {
@@ -202,6 +204,8 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *e)
     }
     return false;
 }
+
+
 /* 画阴影 */
 void MainWindow::paintEvent(QPaintEvent *event)
 {
@@ -227,14 +231,17 @@ void MainWindow::paintEvent(QPaintEvent *event)
     }
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 /// 窗口控件槽函数
 //////////////////////////////////////////////////////////////////////////
+
 /* 更新频率的限制要考虑 */
 void MainWindow::on_BTN_REFRESH_clicked()
 {
     m_pFindTerminal->RefreshHostList();
 }
+
 /* 请求聊天 */
 void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
 {
@@ -261,6 +268,7 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
 }
 
+
 /* 发送文本消息,每10秒以上间隔才显示一次时间 */
 void MainWindow::on_BTN_SEND_clicked()
 {
@@ -286,6 +294,7 @@ void MainWindow::on_BTN_SEND_clicked()
 
     ui->TEXT_MSG_SEND->clear();
 }
+
 /* 结束聊天 */
 void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 {
@@ -295,6 +304,7 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
 }
+
 /* 发送图片 */
 void MainWindow::on_BTN_SEND_PIC_clicked()
 {
@@ -312,18 +322,21 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
         fd->close();
     qDebug() << fileNameList;
 }
+
 /* 关闭程序 */
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     m_pTextChat->Close();
     this->close();
 }
+
 /* 最小化 */
 void MainWindow::on_BTN_MIN_clicked()
 {
     this->showMinimized();
     m_pVideo->GetViewfinder()->hide();
 }
+
 /* 关闭，开启摄像头 */
 void MainWindow::on_BTN_VIDEO_clicked()
 {
@@ -345,6 +358,7 @@ void MainWindow::on_BTN_VIDEO_clicked()
     }
 
 }
+
 /* 提升视频窗口 */
 void MainWindow::slot_raise_video()
 {
@@ -388,7 +402,7 @@ void MainWindow::slot_recv_text_msg(QList<QString>& text)
     QString all;
     while (!text.empty())
     {
-        all += TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR, FONT_SIZE) + text.front() + TEXT_BACK;
+        all += TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_2, FONT_SIZE) + text.front() + TEXT_BACK;
         text.pop_front();
     }
     ui->TEXT_MSG_RECORD->setHtml(ui->TEXT_MSG_RECORD->toHtml()+ all);

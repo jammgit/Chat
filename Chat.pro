@@ -26,7 +26,8 @@ HEADERS  += mainwindow.h \
     findterminal.h \
     mylistwidget.h \
     textchat.h \
-    videodisplay.h
+    videodisplay.h \
+    msgtype.h
 
 FORMS    += mainwindow.ui
 
