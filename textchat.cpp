@@ -95,13 +95,13 @@ void TextChat::Close()
     }
 }
 
-
+/* 外层接口 */
 int TextChat::SendMsg(QString text)
 {
     /* 当然是存在连接时才能发送数据了 */
     if (m_pConn)
     {
-        qint64 ret = m_pConn->write(text.toUtf8());
+        qint64 ret = m_pConn->write(text.toUtf8().toBase64()+':');
         if (ret == -1)
         {
             QMessageBox::information(nullptr, QString("错误"), QString("通信出现错误，请重新连接"));
@@ -181,9 +181,10 @@ void TextChat::slot_recv_msg()
             m_pConn = nullptr;
         }
     }
-    else /* 聊天消息 */
+    else /* 聊天消息(Base64编码) */
     {
         QString str(m_pConn->readAll());
+
         if (str.size() == 0)
         {/* 对端关闭连接 */
             /* 先关闭关联再delete */
@@ -196,7 +197,7 @@ void TextChat::slot_recv_msg()
         }
         else
         {
-            if (str == QString(CLOSE))
+            if (str == QString(CLOSE))          //非Base64编码,但不可能接收到CLOSE字符串
             {/* 对端关闭连接 */
                 qDebug() << "对端关闭连接";
                 m_pConn->close();
@@ -206,8 +207,16 @@ void TextChat::slot_recv_msg()
                 /*通知窗口更新*/
                 emit this->signal_peer_close();
             }
-            else
-                emit this->signal_recv_msg(str);
+            else                                 //Base64编码
+            {
+                QList<QString> strlist = str.split(':');
+                while (strlist.size() != 0)
+                {
+                    emit this->signal_recv_msg(
+                                QByteArray::fromBase64(strlist.front().toLatin1()));
+                    strlist.pop_front();
+                }
+            }
         }
     }
 

@@ -28,6 +28,8 @@
 #define TIME_FRONT_OTHER QString("<p align=\"left\"><font style=\"font-family:微软雅黑\" color=\"#0099FF\" size=\"2\">")
 #define TEXT_BACK        QString("</font></p>")
 
+#define PIC_HTML_STRING QString("<p align=\"%1\"><img src=\"%2\" height=\"%3\" width=\"%4\"><p>")
+
 
 namespace Ui {
 class MainWindow;

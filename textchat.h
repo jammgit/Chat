@@ -7,14 +7,18 @@
 #include <QHostAddress>
 #include <QMessageBox>
 #include <QHostInfo>
+#include <QByteArray>
 
 #include "findterminal.h"
 
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888
+/* 类内部调用的控制消息，非Base64编码 */
 #define ACCEPT QString("accept").toUtf8()
 #define REJECT QString("reject").toUtf8()
-#define CLOSE  QString("close$%#_*!^").toUtf8()
+/* 这是糟糕的一个设计：发送此文本表示结束聊天，所以如果用户输入
+ * 此文本即发生结束聊天，问题来源：QT socket同步关闭！不过Base64编码解决了问题  */
+#define CLOSE  QString("!").toUtf8()
 
 class TextChat : public QObject
 {
@@ -32,7 +36,6 @@ public:
     void SetFindTerminal(FindTerminal *ter)
     {
         m_pTer = ter;
-        //m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pConn->peerAddress().toString()).toInt()].hostname;
     }
 
     /* 是否已建立连接,注意：是否能够开始聊天 和 是否建立连接是两回事，
@@ -77,6 +80,8 @@ private:
     FindTerminal *m_pTer;
     /* 在连接时，对端的地址信息 */
     chat_host_t m_peerhost;
+    /* 文本消息接受的缓冲区（主要为了消息的分隔复原） */
+    QString m_recvBuffer;
 };
 
 #endif // TEXTCHAT_H

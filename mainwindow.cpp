@@ -21,6 +21,7 @@ void MainWindow::__Init()
     {
     /* 初始化控件 */
     //ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><img src=\"src/bg_1.png\" height=\"100\" width=\"100\"><p>"));
+
     /* set border */
     //ui->LABEL_SELF->setFrameShape (QFrame::Box);
     //ui->LABEL_OTHER->setFrameShape (QFrame::Box);
@@ -126,6 +127,7 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *e)
     if (e->type() == QEvent::KeyPress)
     {
         QKeyEvent *event = static_cast<QKeyEvent*>(e);
+        /* Key_Enter is in small key(number)*/
         if (event->key() == Qt::Key_Return && (event->modifiers() & Qt::ControlModifier))
         {
             this->on_BTN_SEND_clicked();
