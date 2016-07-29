@@ -7,6 +7,8 @@
 QT       += core gui
 QT += network
 CONFIG += c++11
+QT += multimedia
+QT += multimediawidgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = Chat
@@ -17,12 +19,14 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     findterminal.cpp \
     mylistwidget.cpp \
-    textchat.cpp
+    textchat.cpp \
+    videodisplay.cpp
 
 HEADERS  += mainwindow.h \
     findterminal.h \
     mylistwidget.h \
-    textchat.h
+    textchat.h \
+    videodisplay.h
 
 FORMS    += mainwindow.ui
 

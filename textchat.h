@@ -8,6 +8,7 @@
 #include <QMessageBox>
 #include <QHostInfo>
 #include <QByteArray>
+#include <QDate>
 
 #include "findterminal.h"
 
@@ -55,7 +56,7 @@ signals:
     /* 请求聊天消息到达,btn返回用户点击的按钮 */
     void signal_request_arrive(QString text, QMessageBox::StandardButton &btn);
     /* 消息到达，通知窗口更新 */
-    void signal_recv_msg(QString text);
+    void signal_recv_msg(QList<QString>& text);
     /* 关闭连接信号函数 */
     void signal_peer_close();
     /* 发送出错，对方已关闭 */

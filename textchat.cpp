@@ -101,7 +101,8 @@ int TextChat::SendMsg(QString text)
     /* 当然是存在连接时才能发送数据了 */
     if (m_pConn)
     {
-        qint64 ret = m_pConn->write(text.toUtf8().toBase64()+':');
+        qint64 ret = m_pConn->write(QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+                                    + text.toUtf8().toBase64()+':');
         if (ret == -1)
         {
             QMessageBox::information(nullptr, QString("错误"), QString("通信出现错误，请重新连接"));
@@ -211,12 +212,21 @@ void TextChat::slot_recv_msg()
             else                                 //Base64编码
             {
                 QList<QString> strlist = str.split(':');
+
+                QList<QString> textlist;
+                textlist.push_back(QByteArray::fromBase64(strlist.front().toLatin1()));
+                int i = 1;
                 while (strlist.size() != 1)     // 最后一个是空的，省略
                 {
-                    emit this->signal_recv_msg(
-                                QByteArray::fromBase64(strlist.front().toLatin1()));
+                    if (i%2==1)
+                    {
+                        textlist.push_back(QByteArray::fromBase64(strlist.front().toLatin1()));
+
+                    }
                     strlist.pop_front();
+                    i++;
                 }
+                emit this->signal_recv_msg(textlist);
             }
         }
     }

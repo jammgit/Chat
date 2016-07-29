@@ -20,5 +20,7 @@
         <file>src/noimage_3.png</file>
         <file>src/min_2.png</file>
         <file>src/windowclose_3.png</file>
+        <file>src/closevideo.png</file>
+        <file>src/openvideo.png</file>
     </qresource>
 </RCC>
