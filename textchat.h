@@ -11,7 +11,7 @@
 #include <QDate>
 
 #include "findterminal.h"
-#include "msgtype.h"
+#include "msginfo.h"
 
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888
@@ -33,7 +33,7 @@ public:
     /* 断开聊天，此时需要注意避开服务端主动断开的timewait状态 */
     void Close();
     /* 发送信息函数 */
-    int SendMsg(QString text);
+    const QString& SendMsg(QString text);
     /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
     void SetFindTerminal(FindTerminal *ter)
     {

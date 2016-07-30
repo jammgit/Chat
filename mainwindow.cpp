@@ -284,13 +284,15 @@ void MainWindow::on_BTN_SEND_clicked()
         m_pTimeSpace->start(TIME_DISPLAY_SPACE);
         m_isshow = false;
     }
+//    ui->TEXT_MSG_RECORD->setHtml(
+//            ui->TEXT_MSG_RECORD->toHtml()
+//            + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_2, FONT_SIZE) + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK
+//            );
+
+    QString htmltext = m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
     ui->TEXT_MSG_RECORD->setHtml(
-            ui->TEXT_MSG_RECORD->toHtml()
-            + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_2, FONT_SIZE) + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK
-            );
-
-    m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
-
+                ui->TEXT_MSG_RECORD->toHtml()
+                + htmltext);
 
     ui->TEXT_MSG_SEND->clear();
 }
@@ -391,7 +393,7 @@ void MainWindow::slot_recv_text_msg(QList<QString>& text)
     {
         ui->TEXT_MSG_RECORD->setHtml(
                     ui->TEXT_MSG_RECORD->toHtml()
-                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) +text.front() + TEXT_BACK);
+                    + text.front());
         text.pop_front();
         m_pTimeSpace->start(TIME_DISPLAY_SPACE);
         m_isshow = false;
@@ -399,13 +401,13 @@ void MainWindow::slot_recv_text_msg(QList<QString>& text)
     else
         text.pop_front();
 
-    QString all;
+    QString t = ui->TEXT_MSG_RECORD->toHtml();
     while (!text.empty())
     {
-        all += TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_2, FONT_SIZE) + text.front() + TEXT_BACK;
+        t += text.front();
         text.pop_front();
     }
-    ui->TEXT_MSG_RECORD->setHtml(ui->TEXT_MSG_RECORD->toHtml()+ all);
+    ui->TEXT_MSG_RECORD->setHtml(t);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 

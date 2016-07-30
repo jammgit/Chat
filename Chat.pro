@@ -27,7 +27,7 @@ HEADERS  += mainwindow.h \
     mylistwidget.h \
     textchat.h \
     videodisplay.h \
-    msgtype.h
+    msginfo.h
 
 FORMS    += mainwindow.ui
 

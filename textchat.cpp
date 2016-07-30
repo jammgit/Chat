@@ -96,13 +96,13 @@ void TextChat::Close()
 }
 
 /* 外层接口 */
-int TextChat::SendMsg(QString text)
+const QString& TextChat::SendMsg(QString text)
 {
     /* 当然是存在连接时才能发送数据了 */
     if (m_pConn)
     {
-        qint64 ret = m_pConn->write(QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
-                                    + text.toUtf8().toBase64()+':');
+        qint64 ret = m_pConn->write(QString(MSG_TEXT).toUtf8().toBase64() + ':' + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+                                    + text.toUtf8().toBase64()+';');
         if (ret == -1)
         {
             QMessageBox::information(nullptr, QString("错误"), QString("通信出现错误，请重新连接"));
@@ -111,10 +111,12 @@ int TextChat::SendMsg(QString text)
             m_pConn = nullptr;
             m_isConnect = false;
             emit this->signal_send_error();
+            return "";
         }
-        return ret;
+        return TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR, FONT_SIZE)
+                + text + TEXT_BACK ;
     }
-    return 0;
+    return "";
 }
 
 
@@ -211,22 +213,40 @@ void TextChat::slot_recv_msg()
             }
             else                                 //Base64编码
             {
-                QList<QString> strlist = str.split(':');
-
+                QList<QString> strlist = str.split(';');
+                strlist.pop_back();
                 QList<QString> textlist;
-                textlist.push_back(QByteArray::fromBase64(strlist.front().toLatin1()));
-                strlist.pop_front();
-                int i = 1;
-                while (strlist.size() != 1)     // 最后一个是空的，省略
-                {
-                    if (i%2==1)
-                    {
-                        textlist.push_back(QByteArray::fromBase64(strlist.front().toLatin1()));
 
-                    }
+                while (!strlist.empty())
+                {
+                    QList<QString> onemsg = strlist.front().split(':');
                     strlist.pop_front();
-                    i++;
+                    QString who = QByteArray::fromBase64(onemsg.front().toLatin1());
+                    switch(who.toInt())
+                    {
+                    case MSG_EMOJI:
+                        break;
+                    case MSG_IMAGE:
+                        break;
+                    case MSG_TEXT :
+                        if (textlist.empty())
+                        {
+                            textlist.push_back(
+                                        TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE)
+                                        + QByteArray::fromBase64(onemsg[1].toLatin1())
+                                        + TEXT_BACK);
+                        }
+                        textlist.push_back(
+                                    TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_2, FONT_SIZE)
+                                    + QByteArray::fromBase64(onemsg[2].toLatin1())
+                                    + TEXT_BACK);
+                        break;
+                    default:
+                        qDebug() << "default";
+                        break;
+                    }
                 }
+
                 emit this->signal_recv_msg(textlist);
             }
         }
