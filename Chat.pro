@@ -21,7 +21,8 @@ SOURCES += main.cpp\
     mylistwidget.cpp \
     textchat.cpp \
     videodisplay.cpp \
-    myextextedit.cpp
+    myextextedit.cpp \
+    transferfile.cpp
 
 HEADERS  += mainwindow.h \
     findterminal.h \
@@ -29,7 +30,8 @@ HEADERS  += mainwindow.h \
     textchat.h \
     videodisplay.h \
     msginfo.h \
-    myextextedit.h
+    myextextedit.h \
+    transferfile.h
 
 FORMS    += mainwindow.ui
 

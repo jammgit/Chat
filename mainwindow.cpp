@@ -598,11 +598,11 @@ void MainWindow::slot_shake_window()
     {
         if (b)
         {
-            this->move(x-10, y-10);
+            this->move(x-20, y-20);
         }
         else
         {
-            this->move(x+10, y+10);
+            this->move(x+20, y+20);
         }
         b = !b;
         i--;

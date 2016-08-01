@@ -266,7 +266,7 @@ void TextChat::slot_recv_msg()
                         break;
                     case MSG_SHAKE:
                         textlist.push_back(TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
-                                + text + TEXT_BACK);
+                                + "对方抖动了窗口" + TEXT_BACK);
                         emit this->signal_shake_window();
                         break;
                     case MSG_TEXT :
