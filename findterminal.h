@@ -29,6 +29,7 @@
 #define MULTICAST_ADDR "225.12.23.60"
 #define SINGLE_PORT 7777
 /* 用户信息结构体 */
+
 typedef struct chat_host_s
 {
     QString hostname;

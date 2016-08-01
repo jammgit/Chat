@@ -32,8 +32,8 @@ public:
     void ConnectHost(const QHostAddress &addr);
     /* 断开聊天，此时需要注意避开服务端主动断开的timewait状态 */
     void Close();
-    /* 发送信息函数 */
-    const QString& SendMsg(QString text);
+    /* 发送信息函数,input plain text,return html text */
+    const QString SendMsg(char msgtype, const QString& text);
     /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
     void SetFindTerminal(FindTerminal *ter)
     {
@@ -57,11 +57,13 @@ signals:
     /* 请求聊天消息到达,btn返回用户点击的按钮 */
     void signal_request_arrive(QString text, QMessageBox::StandardButton &btn);
     /* 消息到达，通知窗口更新 */
-    void signal_recv_msg(QList<QString>& text);
+    void signal_recv_msg(QList<QString>& text, QList<QString>& emojis);
     /* 关闭连接信号函数 */
     void signal_peer_close();
     /* 发送出错，对方已关闭 */
     void signal_send_error();
+
+    void signal_shake_window();
 
 private slots:
     /* connect成功,那么建立readyread，否则error()被发送 */

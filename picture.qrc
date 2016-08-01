@@ -23,5 +23,7 @@
         <file>src/closevideo.png</file>
         <file>src/openvideo.png</file>
         <file>src/emoji.png</file>
+        <file>src/file.png</file>
+        <file>src/shake.png</file>
     </qresource>
 </RCC>

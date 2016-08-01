@@ -13,6 +13,11 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+    delete m_pVideo;
+    delete m_pTextChat;
+    delete m_pFindTerminal;
+    delete m_pTimer;
+    delete m_pShowTimer;
 }
 
 void MainWindow::__Init()
@@ -20,8 +25,6 @@ void MainWindow::__Init()
 
     {
         /* 初始化控件 */
-        //ui->TEXT_MSG_RECORD->setHtml(QString("<p align=\"right\"><img src=\"src/bg_1.png\" height=\"100\" width=\"100\"><p>"));
-
         /* set border */
         //ui->LABEL_SELF->setFrameShape (QFrame::Box);
         //ui->LABEL_OTHER->setFrameShape (QFrame::Box);
@@ -36,12 +39,14 @@ void MainWindow::__Init()
         ui->BTN_SEND_PIC->setEnabled(false);
         ui->BTN_SESSION_CLOSE->setEnabled(false);
         ui->BTN_SEND_EMOJI->setEnabled(false);
+        ui->BTN_SHAKE->setEnabled(false);
+        ui->BTN_FILE->setEnabled(false);
 
         QPalette pa;
         pa.setColor(QPalette::WindowText,QColor(0,180,180));
         ui->LABEL_CHAT_WITH_WHO->setPalette(pa);
 
-        /* 设置透明 */
+        /* 设置透明textedit */
         ui->TEXT_MSG_RECORD->setReadOnly(true);
         QPalette pl = ui->TEXT_MSG_RECORD->palette();
         pl.setBrush(QPalette::Base,QBrush(QColor(230,230,230,100)));
@@ -59,11 +64,44 @@ void MainWindow::__Init()
         QString str(file.readAll());
         file.close();
         QScrollBar *sroll = ui->TEXT_MSG_RECORD->verticalScrollBar();
+        sroll->setStyleSheet(str);
         sroll->setMinimum(0);
         sroll->setMaximum(100);
-        sroll->setStyleSheet(str);
         sroll = ui->TEXT_MSG_SEND->verticalScrollBar();
         sroll->setStyleSheet(str);
+
+        /* set emoji table widget */
+        m_is_show_emoji_table = true;
+        ui->TABLE_EMOJI->hide();
+        ui->TABLE_EMOJI->setSelectionMode(QAbstractItemView::SingleSelection);
+        ui->TABLE_EMOJI->verticalHeader()->setHidden(true);
+        ui->TABLE_EMOJI->horizontalHeader()->setHidden(true);
+        ui->TABLE_EMOJI->verticalScrollBar()->setStyleSheet(str);
+        QDir dir("./emoji");
+        QStringList filters;
+        filters << "*.gif";
+        dir.setNameFilters(filters);
+        int count = dir.count();
+        int rows = count/9+1;
+        ui->TABLE_EMOJI->setRowCount(rows);
+        ui->TABLE_EMOJI->setColumnCount(9);
+        for (int i = 0; i < 9; i++)
+            ui->TABLE_EMOJI->setColumnWidth(i,60);
+        for (int j = 0; j < rows; j++)
+            ui->TABLE_EMOJI->setRowHeight(j,60);
+        int idx=0;
+        while (idx < count)
+        {
+            QLabel *label = new QLabel;
+            label->setStyleSheet("QLabel:hover{border: 1px solid  #000000}");
+            label->setScaledContents(true);
+            QMovie *movie = new QMovie(QString("./emoji/%1.gif").arg(idx+1));
+            label->setMovie(movie);
+            movie->start();
+            ui->TABLE_EMOJI->setCellWidget(idx/9,idx%9,label);
+            ++idx;
+        }
+
 
         /* 设置阴影 */
         QGraphicsDropShadowEffect *shadow_effect = new QGraphicsDropShadowEffect(this);
@@ -82,6 +120,7 @@ void MainWindow::__Init()
         ui->TEXT_MSG_SEND->setGraphicsEffect(shadow_effect1);
         ui->LIST_HOST->setGraphicsEffect(shadow_effect2);
 
+
         /* set button style */
         QFile f("./qss/pushbutton.qss");
         f.open(QFile::ReadOnly);
@@ -95,6 +134,8 @@ void MainWindow::__Init()
         ui->BTN_SEND_PIC->setStyleSheet(str);
         ui->BTN_VIDEO->setStyleSheet(str);
         ui->BTN_SEND_EMOJI->setStyleSheet(str);
+        ui->BTN_FILE->setStyleSheet(str);
+        ui->BTN_SHAKE->setStyleSheet(str);
 
         this->setWindowFlags(Qt::FramelessWindowHint );//无边框
         /* 设置阴影必须带上这一句 */
@@ -104,9 +145,10 @@ void MainWindow::__Init()
         //ui->pushButton->setStyleSheet("QPushButton{border-radius:5px;border-width:0px;}");           设置透明
     }
     /* 没TIME_DISPLAY_SPACE秒显示一次时间 */
-    m_pTimeSpace = new QTimer;
-    connect(m_pTimeSpace, SIGNAL(timeout()), this, SLOT(slot_show_time()));
-    m_isshow = true;
+    m_pShowTimer = new QTimer;
+    connect(m_pShowTimer, SIGNAL(timeout()), this, SLOT(slot_show_time()));
+    m_is_show_time = true;
+
 
 
     /* 没两秒提升video窗口，暂时没其他办法 */
@@ -125,10 +167,13 @@ void MainWindow::__Init()
             this, SLOT(slot_request_result(bool, const chat_host_t&)));
     connect(m_pTextChat, SIGNAL(signal_request_arrive(QString,QMessageBox::StandardButton&)),
             this, SLOT(slot_request_arrive(QString,QMessageBox::StandardButton&)));
-    connect(m_pTextChat, SIGNAL(signal_recv_msg(QList<QString>&)), this, SLOT(slot_recv_text_msg(QList<QString>&)));
+    connect(m_pTextChat, SIGNAL(signal_recv_msg(QList<QString>&, QList<QString>&)),
+            this, SLOT(slot_recv_text_msg(QList<QString>&, QList<QString>&)));
     connect(m_pTextChat, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
     connect(m_pTextChat, SIGNAL(signal_send_error()), this, SLOT(slot_send_error()));
+    connect(m_pTextChat, SIGNAL(signal_shake_window()), this, SLOT(slot_shake_window()));
 }
+
 
 /* 设置聊天环境 */
 void MainWindow::__Set_Session(bool yes)
@@ -141,6 +186,8 @@ void MainWindow::__Set_Session(bool yes)
         ui->BTN_SEND_PIC->setEnabled(true);
         ui->BTN_SESSION_CLOSE->setEnabled(true);
         ui->BTN_SEND_EMOJI->setEnabled(true);
+        ui->BTN_SHAKE->setEnabled(true);
+        ui->BTN_FILE->setEnabled(true);
         ui->LABEL_CHAT_WITH_WHO->setText(m_peerhost.hostname);
     }
     else
@@ -153,6 +200,8 @@ void MainWindow::__Set_Session(bool yes)
         ui->BTN_SEND_PIC->setEnabled(false);
         ui->BTN_SESSION_CLOSE->setEnabled(false);
         ui->BTN_SEND_EMOJI->setEnabled(false);
+        ui->BTN_SHAKE->setEnabled(false);
+        ui->BTN_FILE->setEnabled(false);
         ui->LABEL_CHAT_WITH_WHO->setText("");
     }
 }
@@ -275,26 +324,24 @@ void MainWindow::on_BTN_SEND_clicked()
     if (ui->TEXT_MSG_SEND->toPlainText().size() == 0)
         return ;
 
-    if (m_isshow)
+    if (m_is_show_time)
     {
         ui->TEXT_MSG_RECORD->setHtml(
                     ui->TEXT_MSG_RECORD->toHtml()
                     + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
                     );
-        m_pTimeSpace->start(TIME_DISPLAY_SPACE);
-        m_isshow = false;
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
     }
-//    ui->TEXT_MSG_RECORD->setHtml(
-//            ui->TEXT_MSG_RECORD->toHtml()
-//            + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_2, FONT_SIZE) + ui->TEXT_MSG_SEND->toPlainText() + TEXT_BACK
-//            );
+    QString htmltext = m_pTextChat->SendMsg(MSG_TEXT, ui->TEXT_MSG_SEND->toPlainText());
 
-    QString htmltext = m_pTextChat->SendMsg(ui->TEXT_MSG_SEND->toPlainText());
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
                 + htmltext);
 
     ui->TEXT_MSG_SEND->clear();
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
 /* 结束聊天 */
@@ -310,6 +357,15 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 /* 发送图片 */
 void MainWindow::on_BTN_SEND_PIC_clicked()
 {
+    if (m_is_show_time)
+    {
+        ui->TEXT_MSG_RECORD->setHtml(
+                    ui->TEXT_MSG_RECORD->toHtml()
+                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
+                    );
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
     QStringList   fileNameList;
     QFileDialog* fd = new QFileDialog(this);        //创建对话框
     fd->resize(240,320);                            //设置显示的大小
@@ -323,6 +379,8 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     else
         fd->close();
     qDebug() << fileNameList;
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
 /* 关闭程序 */
@@ -361,6 +419,75 @@ void MainWindow::on_BTN_VIDEO_clicked()
 
 }
 
+void MainWindow::on_BTN_SEND_EMOJI_clicked()
+{
+
+    if (m_is_show_emoji_table)
+        ui->TABLE_EMOJI->show();
+    else
+        ui->TABLE_EMOJI->hide();
+    m_is_show_emoji_table = !m_is_show_emoji_table;
+}
+
+void MainWindow::on_TABLE_EMOJI_clicked(const QModelIndex &index)
+{
+    if (m_is_show_time)
+    {
+        ui->TEXT_MSG_RECORD->setHtml(
+                    ui->TEXT_MSG_RECORD->toHtml()
+                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
+                    );
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
+    ui->TABLE_EMOJI->hide();
+    m_is_show_emoji_table = true;
+    int row = index.row();
+    int column = index.column();
+    int idx = row*9+column+1;
+    QString emoji = QString("./emoji/%1.gif").arg(idx);
+
+    QString html = m_pTextChat->SendMsg(MSG_EMOJI, emoji);
+
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
+
+    /* QUrli's QString is html variable's src ,just a tag*/
+    ui->TEXT_MSG_RECORD->AddAnimation(QUrl(emoji), emoji);  //添加一个动画.
+
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
+}
+
+/* frequency of shaking window is five seconds */
+void MainWindow::on_BTN_SHAKE_clicked()
+{
+    if (m_is_show_time)
+    {
+        ui->TEXT_MSG_RECORD->setHtml(
+                    ui->TEXT_MSG_RECORD->toHtml()
+                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
+                    );
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
+    static bool isbegin = true;
+    static QDateTime s = QDateTime::currentDateTime();
+    QDateTime e = QDateTime::currentDateTime();
+    if(isbegin || (e.toTime_t() - s.toTime_t() > 5))
+    {
+        s = e;
+        QString html = m_pTextChat->SendMsg(MSG_SHAKE, QString("你抖动了窗口"));
+        ui->TEXT_MSG_RECORD->setHtml(
+                    ui->TEXT_MSG_RECORD->toHtml()
+                    + html);
+        isbegin = false;
+    }
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
+}
+
 /* 提升视频窗口 */
 void MainWindow::slot_raise_video()
 {
@@ -383,20 +510,21 @@ void MainWindow::slot_peer_close()
     qDebug() << "??";
     ui->LIST_HOST->setEnabled(true);
 }
+
 /* 接受消息 */
-void MainWindow::slot_recv_text_msg(QList<QString>& text)
+void MainWindow::slot_recv_text_msg(QList<QString>& text, QList<QString>& emojis)
 {
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(0);
 
-    if (m_isshow)
+    if (m_is_show_time)
     {
         ui->TEXT_MSG_RECORD->setHtml(
                     ui->TEXT_MSG_RECORD->toHtml()
                     + text.front());
         text.pop_front();
-        m_pTimeSpace->start(TIME_DISPLAY_SPACE);
-        m_isshow = false;
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
     }
     else
         text.pop_front();
@@ -408,9 +536,12 @@ void MainWindow::slot_recv_text_msg(QList<QString>& text)
         text.pop_front();
     }
     ui->TEXT_MSG_RECORD->setHtml(t);
+    /* QUrli's QString is html variable's src ,just a tag*/
+    foreach (QString emoji, emojis) {
+        ui->TEXT_MSG_RECORD->AddAnimation(QUrl(emoji), emoji);  //添加一个动画.
+    }
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
-
 }
 
 /* 聊天请求到达 */
@@ -421,6 +552,7 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
                                                              | QMessageBox::StandardButton::No);
     btn = b;
 }
+
 /* 请求结果 */
 void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 {
@@ -438,15 +570,47 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->LIST_HOST->setEnabled(false);
     }
 }
+
 /* 发送消息失败 */
 void MainWindow::slot_send_error()
 {
     this->__Set_Session(false);
+    ui->LIST_HOST->setEnabled(true);
 }
 
 
 void MainWindow::slot_show_time()
 {
-    m_isshow = true;
+    m_is_show_time = true;
 
 }
+
+void MainWindow::slot_shake_window()
+{
+    this->raise();
+    QPoint point = this->pos();
+    int x = point.x();
+    int y = point.y();
+
+    int i = 6;
+    bool b = true;
+    while (i>0)
+    {
+        if (b)
+        {
+            this->move(x-10, y-10);
+        }
+        else
+        {
+            this->move(x+10, y+10);
+        }
+        b = !b;
+        i--;
+    }
+    this->move(point);
+}
+
+
+
+
+

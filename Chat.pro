@@ -20,14 +20,16 @@ SOURCES += main.cpp\
     findterminal.cpp \
     mylistwidget.cpp \
     textchat.cpp \
-    videodisplay.cpp
+    videodisplay.cpp \
+    myextextedit.cpp
 
 HEADERS  += mainwindow.h \
     findterminal.h \
     mylistwidget.h \
     textchat.h \
     videodisplay.h \
-    msginfo.h
+    msginfo.h \
+    myextextedit.h
 
 FORMS    += mainwindow.ui
 

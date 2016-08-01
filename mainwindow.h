@@ -9,14 +9,17 @@
 #include <QtMath>
 #include <QGraphicsDropShadowEffect>
 #include <string>
+#include <QMovie>
 #include <QPoint>
 #include <QTimer>
 #include <QDateTime>
 #include <QTextEdit>
+
 #include "findterminal.h"
 #include "textchat.h"
 #include "mylistwidget.h"
 #include "videodisplay.h"
+#include "myextextedit.h"
 
 /*  SIGNAL/SLOT理解：
  *      signal（int a, char &b, string * c）
@@ -65,13 +68,19 @@ private slots:  /* ------------窗口控件槽函数---------------- */
 
     void on_BTN_VIDEO_clicked();
 
+    void on_BTN_SEND_EMOJI_clicked();
+
+    void on_TABLE_EMOJI_clicked(const QModelIndex &index);
+
+    void on_BTN_SHAKE_clicked();
+
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
     void slot_request_result(bool ret, const chat_host_t& peerhost);
     /* 请求聊天消息到达,btn返回用户点击的按钮 */
     void slot_request_arrive(QString text, QMessageBox::StandardButton &btn);
     /* 文本消息到达，通知窗口更新 */
-    void slot_recv_text_msg(QList<QString>& text);
+    void slot_recv_text_msg(QList<QString>& text, QList<QString>& emojis);
     /* 关闭连接信号函数 */
     void slot_peer_close();
     /* 通信出错 */
@@ -81,18 +90,22 @@ public slots: /* --------------文本消息槽函数---------------- */
     /* 显示时间 */
     void slot_show_time();
 
+    void slot_shake_window();
+
 public slots: /* --------------视频信息槽函数---------------- */
 
 
 private:
     Ui::MainWindow *ui;
     /* 用于文本框显示时间的计时 */
-    QTimer *m_pTimeSpace;
-    bool m_isshow;
+    QTimer *m_pShowTimer;
+    bool m_is_show_time;
+
+    bool m_is_show_emoji_table;
 
     /* 执行视频窗口的的raise */
     QTimer *m_pTimer;
-
+    /* window move position */
     QPoint m_position;
     /* 多播终端发现接口 */
     FindTerminal *m_pFindTerminal;

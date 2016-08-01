@@ -96,13 +96,41 @@ void TextChat::Close()
 }
 
 /* 外层接口 */
-const QString& TextChat::SendMsg(QString text)
+const QString TextChat::SendMsg(char msgtype, const QString& text)
 {
     /* 当然是存在连接时才能发送数据了 */
-    if (m_pConn)
+//    if (m_pConn)
     {
-        qint64 ret = m_pConn->write(QString(MSG_TEXT).toUtf8().toBase64() + ':' + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
-                                    + text.toUtf8().toBase64()+';');
+        qDebug() << "send before";
+        qint64 ret=0;
+        QString str_ret;
+        switch(msgtype)
+        {
+        case MSG_EMOJI: /* text is a path of *.gif */
+            ret = m_pConn->write(QString(MSG_EMOJI).toUtf8().toBase64() + ':'
+                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+                                        + text.toUtf8().toBase64()+';');
+            str_ret = PIC_HTML_STRING.arg(RIGHT, text, QString::number(60),QString::number(60));
+            break;
+        case MSG_SHAKE:
+            ret = m_pConn->write(QString(MSG_SHAKE).toUtf8().toBase64() + ':'
+                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+                                        + text.toUtf8().toBase64()+';');
+            str_ret = TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
+                    + text + TEXT_BACK;
+            break;
+        case MSG_TEXT:
+            ret = m_pConn->write(QString(MSG_TEXT).toUtf8().toBase64() + ':'
+                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+                                        + text.toUtf8().toBase64()+';');
+            str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR, FONT_SIZE)
+                    + text + TEXT_BACK ;
+            break;
+        default:
+            break;
+        }
+
+        qDebug() << "send after";
         if (ret == -1)
         {
             QMessageBox::information(nullptr, QString("错误"), QString("通信出现错误，请重新连接"));
@@ -113,8 +141,7 @@ const QString& TextChat::SendMsg(QString text)
             emit this->signal_send_error();
             return "";
         }
-        return TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR, FONT_SIZE)
-                + text + TEXT_BACK ;
+        return str_ret;
     }
     return "";
 }
@@ -216,29 +243,36 @@ void TextChat::slot_recv_msg()
                 QList<QString> strlist = str.split(';');
                 strlist.pop_back();
                 QList<QString> textlist;
-
-                while (!strlist.empty())
+                QList<QString> emojis;
+                while (!strlist.isEmpty())
                 {
                     QList<QString> onemsg = strlist.front().split(':');
+                    /* just need one time for the messages arriving in the same time*/
+                    if (textlist.empty())
+                    {
+                        textlist.push_back(
+                                    TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE)
+                                    + QByteArray::fromBase64(onemsg[1].toLatin1())
+                                    + TEXT_BACK);
+                    }
                     strlist.pop_front();
-                    QString who = QByteArray::fromBase64(onemsg.front().toLatin1());
-                    switch(who.toInt())
+                    QString who = QByteArray::fromBase64(onemsg[0].toLatin1());
+                    QString text(QByteArray::fromBase64(onemsg[2].toLatin1()));
+                    switch(who.toStdString()[0])
                     {
                     case MSG_EMOJI:
+                        textlist.push_back(PIC_HTML_STRING.arg(LEFT, text, QString::number(60),QString::number(60)));
+                        emojis.push_back(text);
                         break;
-                    case MSG_IMAGE:
+                    case MSG_SHAKE:
+                        textlist.push_back(TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
+                                + text + TEXT_BACK);
+                        emit this->signal_shake_window();
                         break;
                     case MSG_TEXT :
-                        if (textlist.empty())
-                        {
-                            textlist.push_back(
-                                        TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE)
-                                        + QByteArray::fromBase64(onemsg[1].toLatin1())
-                                        + TEXT_BACK);
-                        }
                         textlist.push_back(
                                     TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_2, FONT_SIZE)
-                                    + QByteArray::fromBase64(onemsg[2].toLatin1())
+                                    + text
                                     + TEXT_BACK);
                         break;
                     default:
@@ -246,8 +280,7 @@ void TextChat::slot_recv_msg()
                         break;
                     }
                 }
-
-                emit this->signal_recv_msg(textlist);
+                emit this->signal_recv_msg(textlist, emojis);
             }
         }
     }

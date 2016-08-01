@@ -123,8 +123,8 @@ void FindTerminal::__Recv_Msg(QUdpSocket *socket, QHostAddress *address)
         foreach (QHostAddress a, m_host.addresses()) {
             if (a.toString() == addr.toString())
             {
-                //qDebug() << "Equal local host";
-                return;
+                qDebug() << "Equal local host";
+                //return;
             }
         }
         buffer[ret] = '\0';
