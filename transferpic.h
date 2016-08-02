@@ -1,6 +1,7 @@
-#ifndef TRANSFERFILE_H
-#define TRANSFERFILE_H
+#ifndef TRANSFERPIC_H
+#define TRANSFERPIC_H
 
+#include <QObject>
 #include <QObject>
 #include <QTcpSocket>
 #include <QFile>
@@ -8,14 +9,14 @@
 #include <QPixmap>
 #include <QBuffer>
 #include <QByteArray>
-#include "msginfo.h"
 
-class TransferFile : public QObject
+
+class TransferPic : public QObject
 {
     Q_OBJECT
 public:
-    explicit TransferFile(QTcpSocket* socket, QObject *parent = 0);
-    ~TransferFile()
+    explicit TransferPic(QTcpSocket*socket, QObject *parent = 0);
+    ~TransferPic()
     {
         delete m_pSocket;
     }
@@ -24,15 +25,13 @@ public:
     {
         return m_pSocket;
     }
-
 signals:
     void signal_peer_close();
 
 public slots:
 
 private:
-    /* 图片、文件传输套接字 */
     QTcpSocket *m_pSocket;
 };
 
-#endif // TRANSFERFILE_H
+#endif // TRANSFERPIC_H

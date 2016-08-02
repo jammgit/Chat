@@ -25,6 +25,7 @@ void MainWindow::__Init()
 
     {
         /* 初始化控件 */
+
         /* set border */
         //ui->LABEL_SELF->setFrameShape (QFrame::Box);
         //ui->LABEL_OTHER->setFrameShape (QFrame::Box);
@@ -41,6 +42,7 @@ void MainWindow::__Init()
         ui->BTN_SEND_EMOJI->setEnabled(false);
         ui->BTN_SHAKE->setEnabled(false);
         ui->BTN_FILE->setEnabled(false);
+        ui->COMBO_DOWN_FILE_LIST->setEditable(false);
 
         QPalette pa;
         pa.setColor(QPalette::WindowText,QColor(0,180,180));
@@ -188,12 +190,15 @@ void MainWindow::__Set_Session(bool yes)
         ui->BTN_SEND_EMOJI->setEnabled(true);
         ui->BTN_SHAKE->setEnabled(true);
         ui->BTN_FILE->setEnabled(true);
+        ui->COMBO_DOWN_FILE_LIST->setEnabled(true);
         ui->LABEL_CHAT_WITH_WHO->setText(m_peerhost.hostname);
     }
     else
     {
         ui->TEXT_MSG_RECORD->clear();
         ui->TEXT_MSG_SEND->clear();
+        ui->COMBO_DOWN_FILE_LIST->clear();
+        ui->COMBO_DOWN_FILE_LIST->setEditable(false);
         ui->TEXT_MSG_RECORD->setEnabled(false);
         ui->TEXT_MSG_SEND->setEnabled(false);
         ui->BTN_SEND->setEnabled(false);
@@ -314,9 +319,12 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     ip[iplen] = '\0';
     qDebug() << QString(ip);
     /* 建立连接 */
-    m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
+    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::TEXT);
+    if (!b)
+    {
+        QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
+    }
 }
-
 
 /* 发送文本消息,每10秒以上间隔才显示一次时间 */
 void MainWindow::on_BTN_SEND_clicked()
@@ -333,7 +341,7 @@ void MainWindow::on_BTN_SEND_clicked()
         m_pShowTimer->start(TIME_DISPLAY_SPACE);
         m_is_show_time = false;
     }
-    QString htmltext = m_pTextChat->SendMsg(MSG_TEXT, ui->TEXT_MSG_SEND->toPlainText());
+    QString htmltext = m_pTextChat->SendMsg(MSG_TEXT, ui->TEXT_MSG_SEND->toHtml());
 
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
@@ -369,7 +377,36 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     QStringList   fileNameList;
     QFileDialog* fd = new QFileDialog(this);        //创建对话框
     fd->resize(240,320);                            //设置显示的大小
-    fd->setNameFilter("Image Files(*.png *.jpg)");  //设置文件过滤器
+    fd->setNameFilter(PICTURE_NAME_FILTER);         //设置图片过滤器
+    fd->setFileMode(QFileDialog::ExistingFiles);
+    fd->setViewMode(QFileDialog::List);             //设置浏览模式，有 列表（list） 模式和 详细信息（detail）两种方式
+    if ( fd->exec() == QDialog::Accepted )          //如果成功的执行
+    {
+        fileNameList = fd->selectedFiles();         //返回文件列表的名称
+    }
+    else
+        fd->close();
+    qDebug() << fileNameList;
+
+
+    /* 设置滚动条置底 */
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
+}
+
+void MainWindow::on_BTN_FILE_clicked()
+{
+    if (m_is_show_time)
+    {
+        ui->TEXT_MSG_RECORD->setHtml(
+                    ui->TEXT_MSG_RECORD->toHtml()
+                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
+                    );
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
+    QStringList   fileNameList;
+    QFileDialog* fd = new QFileDialog(this);        //创建对话框
+    fd->resize(240,320);                            //设置显示的大小
     fd->setFileMode(QFileDialog::ExistingFiles);
     fd->setViewMode(QFileDialog::List);             //设置浏览模式，有 列表（list） 模式和 详细信息（detail）两种方式
     if ( fd->exec() == QDialog::Accepted )          //如果成功的执行
@@ -382,6 +419,13 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
+
+/* 提示是否下载文件 */
+void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
+{
+
+}
+
 
 /* 关闭程序 */
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
@@ -587,14 +631,20 @@ void MainWindow::slot_show_time()
 
 void MainWindow::slot_shake_window()
 {
-    this->raise();
+    /* 设置窗口置顶 */
+    Qt::WindowFlags flags = this->windowFlags();
+    flags |= Qt::WindowStaysOnTopHint;
+    this->setWindowFlags(flags);
+    this->show();
+    qDebug() << "show window";
+
     QPoint point = this->pos();
     int x = point.x();
     int y = point.y();
 
     int i = 6;
     bool b = true;
-    while (i>0)
+    while (!this->isHidden() && i>0)
     {
         if (b)
         {
@@ -606,9 +656,18 @@ void MainWindow::slot_shake_window()
         }
         b = !b;
         i--;
+        /* debug引起延时才能看到窗口移动的效果，也可以做一个小循环，qt没提供跨平台的睡眠函数 */
+        qDebug() << "move window";
     }
     this->move(point);
+    /* 取消置顶 */
+    this->setWindowFlags(flags & ~Qt::WindowStaysOnTopHint);
+    this->show();
+
 }
+
+
+
 
 
 

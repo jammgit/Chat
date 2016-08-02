@@ -14,12 +14,14 @@
 #include <QTimer>
 #include <QDateTime>
 #include <QTextEdit>
+#include <QImage>
 
 #include "findterminal.h"
 #include "textchat.h"
 #include "mylistwidget.h"
 #include "videodisplay.h"
 #include "myextextedit.h"
+
 
 /*  SIGNAL/SLOT理解：
  *      signal（int a, char &b, string * c）
@@ -74,6 +76,10 @@ private slots:  /* ------------窗口控件槽函数---------------- */
 
     void on_BTN_SHAKE_clicked();
 
+    void on_BTN_FILE_clicked();
+
+    void on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1);
+
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
     void slot_request_result(bool ret, const chat_host_t& peerhost);
@@ -105,6 +111,8 @@ private:
 
     /* 执行视频窗口的的raise */
     QTimer *m_pTimer;
+    /* 正在聊天的对端用户的信息 */
+    chat_host_t m_peerhost;
     /* window move position */
     QPoint m_position;
     /* 多播终端发现接口 */
@@ -113,10 +121,7 @@ private:
     TextChat *m_pTextChat;
     /* 摄像头接口 */
     VideoDisplay *m_pVideo;
-    /* 正在聊天的对端用户的信息 */
-    chat_host_t m_peerhost;
-    /* 本机地址信息 */
-//    QHostInfo m_host;
+
 };
 
 #endif // MAINWINDOW_H

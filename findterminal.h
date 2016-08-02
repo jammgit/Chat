@@ -17,19 +17,10 @@
 #include <QMap>
 #include <string>
 #include "mylistwidget.h"
+#include "msginfo.h"
 
-/*  地址信息描述：多播地址为225.12.23.60，端口9999
- *              单播端口 7777
- *  A、B、C类地址都各有一个IP段专用做内网(私有地址)
- *      A类 10.0.0.0 --10.255.255.255
- *      B类 172.16.0.0--172.31.255.255
- *      C类 192.168.0.0--192.168.255.255
- */
-#define MULTICAST_PORT 9999
-#define MULTICAST_ADDR "225.12.23.60"
-#define SINGLE_PORT 7777
+
 /* 用户信息结构体 */
-
 typedef struct chat_host_s
 {
     QString hostname;
@@ -52,7 +43,6 @@ public:
     {
         return m_hostmap;
     }
-
 
 private:
     void __Init();

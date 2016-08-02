@@ -8,28 +8,36 @@
 #include <QMessageBox>
 #include <QHostInfo>
 #include <QByteArray>
+#include <QString>
 #include <QDate>
-
+#include <QDir>
+#include <stdlib.h>
 #include "findterminal.h"
 #include "msginfo.h"
+#include "threadmanagement.h"
+#include "transferfile.h"
+#include "transferpic.h"
 
-/* 文本聊天的服务端端口是8888 */
-#define TEXTCHAT_SERVER_PORT 8888
-/* 类内部调用的控制消息，非Base64编码 */
-#define ACCEPT QString("accept").toUtf8()
-#define REJECT QString("reject").toUtf8()
-/* 这是糟糕的一个设计：发送此文本表示结束聊天，所以如果用户输入
- * 此文本即发生结束聊天，问题来源：QT socket同步关闭！不过Base64编码解决了问题  */
-#define CLOSE  QString("!").toUtf8()
+/*
+ * 连接建立顺序：text -> file -> picture
+*/
+
+//#define file    'f'
+//#define picture 'p'
+//#define text    't'
+
 
 class TextChat : public QObject
 {
     Q_OBJECT
 public:
+    enum CONN_TYPE
+    {TEXT, FILE, PICTURE};
+public:
     explicit TextChat(QObject *parent = 0);
     ~TextChat();
     /* 建立连接函数 */
-    void ConnectHost(const QHostAddress &addr);
+    bool ConnectHost(const QHostAddress &addr, enum CONN_TYPE type);
     /* 断开聊天，此时需要注意避开服务端主动断开的timewait状态 */
     void Close();
     /* 发送信息函数,input plain text,return html text */
@@ -50,6 +58,7 @@ public:
 
 private:
     void __Init();
+    void __Close_Socket();
 
 signals:
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
@@ -74,20 +83,30 @@ private slots:
     void slot_is_accept();
     /* 连接套接字：接受新消息 */
     void slot_recv_msg();
+    /* 接受图片 */
+    void slot_recv_picture();
+    /* 接受文件 */
+    void slot_recv_file();
 
 private:
     /* 判断是否能够开始聊天 */
     bool m_isConnect;
     /* 监听套接字 */
     QTcpServer *m_pListen;
-    /* 连接套接字 */
-    QTcpSocket *m_pConn;
+    /* 文本连接套接字 */
+    QTcpSocket *m_pTextConn;
+    /* 真正传输文件时使用的套接字 */
+    QTcpSocket *m_pFileConn;
+    /* 传输图片时的套接字 */
+    QTcpSocket *m_pPicConn;
+    /* 文件管理线程 */
+    ThreadManagement<TransferFile> *m_pFileMng;
+    /* 图片管理线程 */
+    ThreadManagement<TransferPic> *m_pPicMng;
     /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
     FindTerminal *m_pTer;
     /* 在连接时，对端的地址信息 */
     chat_host_t m_peerhost;
-    /* 文本消息接受的缓冲区（主要为了消息的分隔复原） */
-    QString m_recvBuffer;
 };
 
 #endif // TEXTCHAT_H

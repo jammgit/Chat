@@ -8,6 +8,7 @@ QT       += core gui
 QT += network
 CONFIG += c++11
 QT += multimedia
+QT += core
 QT += multimediawidgets
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -22,7 +23,8 @@ SOURCES += main.cpp\
     textchat.cpp \
     videodisplay.cpp \
     myextextedit.cpp \
-    transferfile.cpp
+    transferfile.cpp \
+    transferpic.cpp
 
 HEADERS  += mainwindow.h \
     findterminal.h \
@@ -31,7 +33,9 @@ HEADERS  += mainwindow.h \
     videodisplay.h \
     msginfo.h \
     myextextedit.h \
-    transferfile.h
+    transferfile.h \
+    threadmanagement.h \
+    transferpic.h
 
 FORMS    += mainwindow.ui
 

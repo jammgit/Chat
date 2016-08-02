@@ -6,14 +6,9 @@ TextChat::TextChat(QObject *parent)
     this->__Init();
 }
 
-
 TextChat::~TextChat()
 {
-    if (m_pConn)
-    {
-        m_pConn->close();
-        delete m_pConn;
-    }
+    this->__Close_Socket();
     m_pListen->close();
     delete m_pListen;
 }
@@ -21,7 +16,9 @@ TextChat::~TextChat()
 void TextChat::__Init()
 {
     m_isConnect = false;
-    m_pConn = nullptr;
+    m_pTextConn = nullptr;
+    m_pFileMng = nullptr;
+    m_pPicMng = nullptr;
     m_pTer = nullptr;
     m_pListen = new QTcpServer;
     if (!m_pListen)
@@ -39,31 +36,116 @@ void TextChat::__Init()
 
 }
 
-void TextChat::ConnectHost(const QHostAddress &addr)
+void TextChat::__Close_Socket()
+{
+    if (m_pPicConn)
+    {
+        m_pPicConn->close();
+        delete m_pPicConn;
+        m_pPicConn = nullptr;
+    }
+    if (m_pFileMng)
+    {
+        m_pFileMng->GetClassPoniter()->GetSocket()->close();
+        delete m_pFileMng;
+        m_pFileMng = nullptr;
+    }
+    if (m_pPicMng)
+    {
+        m_pPicMng->GetClassPoniter()->GetSocket()->close();
+        delete m_pPicMng;
+        m_pPicMng = nullptr;
+    }
+}
+
+bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
 {
     /* 建立连接完成，但需要等待对方确认后，若为同意才能开始聊天
      * 并且同时只能和一个人聊天
     */
-    if (!m_pConn)
+    switch(type)
     {
-        if (m_pTer)
-            m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = addr.toString()).toInt()].hostname;
-        else
-            qDebug() << "in textchat.cpp:m_pTer is nullptr";
-        m_pConn = new QTcpSocket;
-        m_pConn->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+    case TEXT:
+        if (!m_pTextConn)
+        {
+            if (m_pTer)
+                m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = addr.toString()).toInt()].hostname;
+            else
+                qDebug() << "in textchat.cpp:m_pTer is nullptr";
+            m_pTextConn = new QTcpSocket;
+            m_pTextConn->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+            if (m_pTextConn->waitForConnected())
+            {
+                qDebug() << "TextChat connected";
+                connect(m_pTextConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+                return true;
+            }
+            else
+            {
+                qDebug() << "TextChat connect failed";
+                delete m_pTextConn;
+                m_pTextConn = nullptr;
+                return false;
+            }
+    //        connect(m_pTextConn, SIGNAL(connected()), this, SLOT(slot_connect_success()));
+    //        connect(m_pTextConn, SIGNAL(error(QAbstractSocket::SocketError)),
+    //                this, SLOT(slot_connect_failed(QAbstractSocket::SocketError)));
+    //        return true;
 
-        connect(m_pConn, SIGNAL(connected()), this, SLOT(slot_connect_success()));
-//        connect(m_pConn, SIGNAL(error(QAbstractSocket::SocketError)),
-//                this, SLOT(slot_connect_failed(QAbstractSocket::SocketError)));
-
+        }
+        break;
+    case FILE:
+        if (!m_pFileMng)
+        {
+            QTcpSocket *tmp = new QTcpSocket;
+            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+            if (tmp->waitForConnected())
+            {
+                qDebug() << "TextChat connected";
+                m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(tmp);
+                connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+                m_pFileMng->start();
+                return true;
+            }
+            else
+            {
+                qDebug() << "TextChat connect failed";
+                delete tmp;
+                return false;
+            }
+        }
+        break;
+    case PICTURE:
+        if (!m_pPicMng)
+        {
+            QTcpSocket* tmp = new QTcpSocket;
+            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+            if (tmp->waitForConnected())
+            {
+                qDebug() << "TextChat connected";
+                m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(tmp);
+                connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
+                m_pPicMng->start();
+                return true;
+            }
+            else
+            {
+                qDebug() << "TextChat connect failed";
+                delete tmp;
+                return false;
+            }
+        }
+        break;
+    default:
+        break;
     }
+    return false;
 }
 
 /* connect成功,那么建立readyread，否则error()被发送 */
 void TextChat::slot_connect_success()
 {
-    connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+    connect(m_pTextConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
 }
 /* error()信号的槽函数，暂不使用 */
 void TextChat::slot_connect_failed(QAbstractSocket::SocketError err)
@@ -71,26 +153,20 @@ void TextChat::slot_connect_failed(QAbstractSocket::SocketError err)
     err = err;
     QMessageBox::information(nullptr,
                              "错误",
-                             QString("请求错误[%1]，对方或许不在线，请刷新或者重试").arg(m_pConn->errorString()));
-    if (m_pConn)
-    {
-        delete m_pConn;
-        m_pConn = nullptr;
-    }
+                             QString("请求错误[%1]，对方或许不在线，请刷新或者重试").arg(m_pTextConn->errorString()));
+    this->__Close_Socket();
     m_isConnect = false;
 }
 
 /* 关闭连接 */
 void TextChat::Close()
 {
-    if (m_pConn)
+    if (m_pTextConn)
     {
-        m_pConn->write(CLOSE);
-        m_pConn->waitForBytesWritten();
+        m_pTextConn->write(CLOSE);
+        m_pTextConn->waitForBytesWritten();
         qDebug() << "close";
-        m_pConn->close();
-        delete m_pConn;
-        m_pConn = nullptr;
+        this->__Close_Socket();
         m_isConnect = false;
     }
 }
@@ -99,7 +175,7 @@ void TextChat::Close()
 const QString TextChat::SendMsg(char msgtype, const QString& text)
 {
     /* 当然是存在连接时才能发送数据了 */
-//    if (m_pConn)
+    if (m_pTextConn)
     {
         qDebug() << "send before";
         qint64 ret=0;
@@ -107,24 +183,45 @@ const QString TextChat::SendMsg(char msgtype, const QString& text)
         switch(msgtype)
         {
         case MSG_EMOJI: /* text is a path of *.gif */
-            ret = m_pConn->write(QString(MSG_EMOJI).toUtf8().toBase64() + ':'
+            ret = m_pTextConn->write(QString(MSG_EMOJI).toUtf8().toBase64() + ':'
                                         + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
                                         + text.toUtf8().toBase64()+';');
             str_ret = PIC_HTML_STRING.arg(RIGHT, text, QString::number(60),QString::number(60));
             break;
         case MSG_SHAKE:
-            ret = m_pConn->write(QString(MSG_SHAKE).toUtf8().toBase64() + ':'
+            ret = m_pTextConn->write(QString(MSG_SHAKE).toUtf8().toBase64() + ':'
                                         + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
                                         + text.toUtf8().toBase64()+';');
             str_ret = TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
                     + text + TEXT_BACK;
             break;
         case MSG_TEXT:
-            ret = m_pConn->write(QString(MSG_TEXT).toUtf8().toBase64() + ':'
+            ret = m_pTextConn->write(QString(MSG_TEXT).toUtf8().toBase64() + ':'
                                         + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
                                         + text.toUtf8().toBase64()+';');
-            str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR, FONT_SIZE)
-                    + text + TEXT_BACK ;
+            str_ret = QString("<p align=\"right\" background-color=\"#895612\">") + text + QString("</p>");
+            break;
+        case MSG_FILE_INFO:     /* 相对、完整路径 */
+//            ret = m_pTextConn->write(QString(MSG_FILE_INFO).toUtf8().toBase64() + ':'
+//                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+//                                        + text.toUtf8().toBase64()+';');
+            str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
+                    + "你向对方发送了：" + text.split("\\").back() + TEXT_BACK;
+
+            break;
+        case MSG_IMAGE_INFO:    /* 相对、完整路径(通知picture manage 发送缩略图) */
+//            ret = m_pTextConn->write(QString(MSG_FILE_INFO).toUtf8().toBase64() + ':'
+//                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+//                                        + text.toUtf8().toBase64()+';');
+            str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
+                    + "你向对方发送了：" + text.split("\\").back() + TEXT_BACK;
+            qDebug() << text.split("\\").back();
+            /* 发送缩略图 */
+//            QImage image(text);
+//            qDebug() << image.byteCount();
+//            QImage image1 = image.scaled(200,image.height()/(image.width()/200));
+//            qDebug() << image1.byteCount();
+//            image1.save("./tmp/a.png");
             break;
         default:
             break;
@@ -134,9 +231,7 @@ const QString TextChat::SendMsg(char msgtype, const QString& text)
         if (ret == -1)
         {
             QMessageBox::information(nullptr, QString("错误"), QString("通信出现错误，请重新连接"));
-            m_pConn->close();
-            delete m_pConn;
-            m_pConn = nullptr;
+            this->__Close_Socket();
             m_isConnect = false;
             emit this->signal_send_error();
             return "";
@@ -149,34 +244,52 @@ const QString TextChat::SendMsg(char msgtype, const QString& text)
 
 void TextChat::slot_is_accept()
 {
-    if (!m_pConn)
+    if (!m_pTextConn)
     {
         if (m_pListen->hasPendingConnections())
         {
-            m_pConn = m_pListen->nextPendingConnection();
+            m_pTextConn = m_pListen->nextPendingConnection();
+            if (strncmp(m_pTextConn->peerAddress().toString().toStdString().c_str(),"127", 3) == 0)
+            {/* 收到来自本地的连接，无语了 */
+                delete m_pTextConn;
+                m_pTextConn = nullptr;
+                return;
+            }
             QMessageBox::StandardButton btn;
             /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
             emit this->signal_request_arrive(QString("用户：")
-                                             + (m_pTer==nullptr?"":(m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pConn->peerAddress().toString()).toInt()].hostname))
-                                             + "("+m_pConn->peerAddress().toString()+")"
+                                             + (m_pTer==nullptr?"":(m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pTextConn->peerAddress().toString()).toInt()].hostname))
+                                             + "("+m_pTextConn->peerAddress().toString()+")"
                                              + "发起聊天请求，是否接受请求？", btn);
 
-            connect(m_pConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+            connect(m_pTextConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
             /* 接受请求 */
             if (btn == QMessageBox::Yes)
             {
-                m_pConn->write(ACCEPT);
+                m_pTextConn->write(ACCEPT);
                 m_isConnect = true;
                 emit this->signal_request_result(true, m_peerhost);
             }
             else
             {/* 不接受请求 */
-                m_pConn->write(REJECT);
+                m_pTextConn->write(REJECT);
                 /* UNIX网络编程中，调用close会把没发送的缓冲区数据清空还是发送完？ */
-                m_pConn->waitForBytesWritten();
-                emit m_pConn->readyRead();
+                m_pTextConn->waitForBytesWritten();
+                emit m_pTextConn->readyRead();
             }
         }
+    }
+    else if (!m_pFileConn)
+    {
+        if (m_pListen->hasPendingConnections())
+            m_pFileConn = m_pListen->nextPendingConnection();
+        connect(m_pFileConn, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+    }
+    else if (!m_pPicConn)
+    {
+        if (m_pListen->hasPendingConnections())
+            m_pPicConn  = m_pListen->nextPendingConnection();
+        connect(m_pPicConn, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
     }
 }
 
@@ -185,9 +298,9 @@ void TextChat::slot_recv_msg()
 {
     //qDebug() << "result come";
     /* 请求信息 */
-    if (!m_isConnect && m_pConn)
+    if (!m_isConnect && m_pTextConn)
     {
-        QString str(m_pConn->readAll());
+        QString str(m_pTextConn->readAll());
         if (str == QString(ACCEPT))
         {/* 请求发起者 */
             m_isConnect = true;
@@ -198,31 +311,29 @@ void TextChat::slot_recv_msg()
         {/* 请求发起者：不被接受请求，则释放socket */
             /* 先关闭关联再delete */
             qDebug() << "请求者关闭连接";
-            m_pConn->close();
-            delete m_pConn;
-            m_pConn = nullptr;
+            m_pTextConn->close();
+            delete m_pTextConn;
+            m_pTextConn = nullptr;
             /* 提示请求失败 */
             emit this->signal_request_result(false, m_peerhost);
         }
         else
         {/* 被请求者，注意：主动关闭应该有请求者发出，不然服务端口会处于timewait状态 */
             qDebug() << "被请求者关闭连接";
-            m_pConn->close();
-            delete m_pConn;
-            m_pConn = nullptr;
+            m_pTextConn->close();
+            delete m_pTextConn;
+            m_pTextConn = nullptr;
         }
     }
     else /* 聊天消息(Base64编码) */
     {
-        QString str(m_pConn->readAll());
+        QString str(m_pTextConn->readAll());
 
         if (str.size() == 0)
         {/* 对端关闭连接 */
             /* 先关闭关联再delete */
             qDebug() << "对端关闭连接";
-            m_pConn->close();
-            delete m_pConn;
-            m_pConn = nullptr;
+            this->__Close_Socket();
             m_isConnect = false;
             emit this->signal_peer_close();
         }
@@ -231,9 +342,7 @@ void TextChat::slot_recv_msg()
             if (str == QString(CLOSE))          //非Base64编码,但不可能接收到CLOSE字符串
             {/* 对端关闭连接 */
                 qDebug() << "对端关闭连接 by CLOSE";
-                m_pConn->close();
-                delete m_pConn;
-                m_pConn = nullptr;
+                this->__Close_Socket();
                 m_isConnect = false;
                 /*通知窗口更新*/
                 emit this->signal_peer_close();
@@ -270,10 +379,10 @@ void TextChat::slot_recv_msg()
                         emit this->signal_shake_window();
                         break;
                     case MSG_TEXT :
-                        textlist.push_back(
-                                    TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_2, FONT_SIZE)
-                                    + text
-                                    + TEXT_BACK);
+                        textlist.push_back(text);
+                        break;
+                    case MSG_FILE_INFO:
+
                         break;
                     default:
                         qDebug() << "default";
@@ -286,5 +395,16 @@ void TextChat::slot_recv_msg()
     }
 
 }
+
+void TextChat::slot_recv_file()
+{
+
+}
+
+void TextChat::slot_recv_picture()
+{
+
+}
+
 
 

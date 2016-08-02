@@ -2,10 +2,15 @@
 #define MSGTYPE_H
 
 
+#define PICTURE_NAME_FILTER "Image Files(*.png *.jpg)"
+
+/* 由特定的图片、文件传输套接字使用 */
 #define MSG_BREVIARY_IMAGE 'A'   // msg format -> msgtype:timestring:filename:content;
 #define MSG_IMAGE          'B'   // msg format -> msgtype:timestring:filename:content;
-#define MSG_BREVIARY_FILE  'C'   // msg format -> msgtype:timestring:filename;
 #define MSG_FILE           'D'   // msg format -> msgtype:timestring:filename:content;
+/* 由文本传输套接字使用 */
+#define MSG_FILE_INFO      'C'   // msg format -> msgtype:timestring:filename;
+#define MSG_IMAGE_INFO     'H'   // msg format -> msgtype:timestring:filename;
 #define MSG_TEXT           'E'   // msg format -> msgtype:timestring:content;
 #define MSG_EMOJI          'F'   // msg format -> msgtype:timestring:content;
 #define MSG_SHAKE          'G'   // msg format -> msgtype:timestring:;
@@ -26,6 +31,32 @@
 #define FONT_SIZE           "2"
 #define FONT                "微软雅黑"
 #define TIME_DISPLAY_SPACE  10000
+
+
+/* use by:findterminal.h */
+/*  地址信息描述：多播地址为225.12.23.60，端口9999
+ *              单播端口 7777
+ *  A、B、C类地址都各有一个IP段专用做内网(私有地址)
+ *      A类 10.0.0.0 --10.255.255.255
+ *      B类 172.16.0.0--172.31.255.255
+ *      C类 192.168.0.0--192.168.255.255
+ */
+#define MULTICAST_PORT 9999
+#define MULTICAST_ADDR "225.12.23.60"
+#define SINGLE_PORT 7777
+
+
+/* use by:textchat.h */
+/* 文本聊天的服务端端口是8888 */
+#define TEXTCHAT_SERVER_PORT 8888
+/* 类内部调用的控制消息，非Base64编码 */
+#define ACCEPT QString("accept").toUtf8()
+#define REJECT QString("reject").toUtf8()
+#define CLOSE  QString("!").toUtf8()
+/* 这是糟糕的一个设计：发送此文本表示结束聊天，所以如果用户输入
+ * 此文本即发生结束聊天，问题来源：QT socket同步关闭！不过--
+ * Base64编码解决了问题  */
+
 
 #endif // MSGTYPE_H
 
