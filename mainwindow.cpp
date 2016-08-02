@@ -325,11 +325,25 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     }
     ip[iplen] = '\0';
     qDebug() << QString(ip);
-    /* 建立连接 */
+    /* 建立三个必须的连接连接 */
     bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::TEXT);
     if (!b)
     {
         QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
+    }
+    b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::FILE);
+    if (!b)
+    {
+        m_pTextChat->Close(CONN_ERR);
+        QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
+        return;
+    }
+    b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::PICTURE);
+    if (!b)
+    {
+       m_pTextChat->Close(CONN_ERR);
+       QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
+       return;
     }
 }
 
@@ -393,7 +407,11 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
         fileNameList = fd->selectedFiles();         //返回文件列表的名称
     }
     else
+    {
         fd->close();
+        return;
+    }
+    fd->close();
     qDebug() << fileNameList;
     QString html;
     foreach (QString path, fileNameList) {
@@ -427,11 +445,15 @@ void MainWindow::on_BTN_FILE_clicked()
         fileNameList = fd->selectedFiles();         //返回文件列表的名称
     }
     else
+    {
         fd->close();
+        return;
+    }
+    fd->close();
     qDebug() << fileNameList;
     QString html;
     foreach (QString path, fileNameList) {
-       html += m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
+       html += m_pTextChat->SendMsg(MSG_FILE_INFO, path);
     }
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
@@ -654,25 +676,11 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
 void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 {
     if (ret)
-    {/* 聊天请求被接受 */
-        QMessageBox::information(this, "请求成功", "现在可以开始聊天");
+    {
         /* 获得对端信息 */
         m_peerhost = peerhost;
-
-        bool b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::FILE);
-        if (!b)
-        {
-            m_pTextChat->Close(CONN_ERR);
-            QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
-            return;
-        }
-        b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::PICTURE);
-        if (!b)
-        {
-           m_pTextChat->Close(CONN_ERR);
-           QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
-           return;
-        }
+        /* 聊天请求被接受 */
+        QMessageBox::information(this, "请求成功", "现在可以开始聊天");
         this->__Set_Session(true);
         ui->LIST_HOST->setEnabled(false);
     }

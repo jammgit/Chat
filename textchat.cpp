@@ -62,6 +62,7 @@ void TextChat::__Close_Socket()
     m_files.clear();
     m_openfiles.clear();
     m_openpics.clear();
+    m_isConnect = false;
 }
 
 bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
@@ -235,7 +236,7 @@ const QString TextChat::SendMsg(char msgtype, QString& text)
             m_files[text.split("\\").back()] = tmp;
              /* 向线程添加任务 */
             m_pPicMng->Append(tmp, text.split("\\").back(), true);
-            str_ret = PIC_HTML_STRING.arg(RIGHT, text, QString::number(200), QString::number(100));
+            str_ret = PIC_HTML_STRING.arg(RIGHT, text, QString::number(100),QString::number(200) );
             /* 添加记录 */
 
             break;
@@ -280,33 +281,13 @@ void TextChat::slot_is_accept()
         if (m_pListen->hasPendingConnections())
         {
             m_pTextConn = m_pListen->nextPendingConnection();
+            if (!m_pTextConn)
+                return;
             if (strncmp(m_pTextConn->peerAddress().toString().toStdString().c_str(),"127", 3) == 0)
             {/* 收到来自本地的连接，无语了 */
                 delete m_pTextConn;
                 m_pTextConn = nullptr;
                 return;
-            }
-            QMessageBox::StandardButton btn;
-            /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
-            emit this->signal_request_arrive(QString("用户：")
-                                             + (m_pTer==nullptr?"":(m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pTextConn->peerAddress().toString()).toInt()].hostname))
-                                             + "("+m_pTextConn->peerAddress().toString()+")"
-                                             + "发起聊天请求，是否接受请求？", btn);
-
-            connect(m_pTextConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
-            /* 接受请求 */
-            if (btn == QMessageBox::Yes)
-            {
-                m_pTextConn->write(ACCEPT);
-                m_isConnect = true;
-                emit this->signal_request_result(true, m_peerhost);
-            }
-            else
-            {/* 不接受请求 */
-                m_pTextConn->write(REJECT);
-                /* UNIX网络编程中，调用close会把没发送的缓冲区数据清空还是发送完？ */
-                m_pTextConn->waitForBytesWritten();
-                emit m_pTextConn->readyRead();
             }
         }
     }
@@ -315,6 +296,11 @@ void TextChat::slot_is_accept()
         QTcpSocket *tmp;
         if (m_pListen->hasPendingConnections())
             tmp = m_pListen->nextPendingConnection();
+        if (!tmp)
+        {
+            this->__Close_Socket();
+            return;
+        }
         m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(tmp);
         connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
 
@@ -324,8 +310,36 @@ void TextChat::slot_is_accept()
         QTcpSocket *tmp;
         if (m_pListen->hasPendingConnections())
             tmp = m_pListen->nextPendingConnection();
+        if (!tmp)
+        {
+            this->__Close_Socket();
+            return;
+        }
         m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(tmp);
         connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+        /* 当三个必须的套接字都成功建立连接后，询问用户是否同意请求 */
+        QMessageBox::StandardButton btn;
+        /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
+        emit this->signal_request_arrive(QString("用户：")
+                                         + (m_pTer==nullptr?"":(m_peerhost.hostname = m_pTer->GetMap()[(m_peerhost.address = m_pTextConn->peerAddress().toString()).toInt()].hostname))
+                                         + "("+m_pTextConn->peerAddress().toString()+")"
+                                         + "发起聊天请求，是否接受请求？", btn);
+
+        connect(m_pTextConn, SIGNAL(readyRead()), this, SLOT(slot_recv_msg()));
+        /* 接受请求 */
+        if (btn == QMessageBox::Yes)
+        {
+            m_pTextConn->write(ACCEPT);
+            m_isConnect = true;
+            emit this->signal_request_result(true, m_peerhost);
+        }
+        else
+        {/* 不接受请求 */
+            m_pTextConn->write(REJECT);
+            /* UNIX网络编程中，调用close会把没发送的缓冲区数据清空还是发送完？ */
+            m_pTextConn->waitForBytesWritten();
+            emit m_pTextConn->readyRead();
+        }
     }
 }
 
@@ -347,18 +361,14 @@ void TextChat::slot_recv_msg()
         {/* 请求发起者：不被接受请求，则释放socket */
             /* 先关闭关联再delete */
             qDebug() << "请求者关闭连接";
-            m_pTextConn->close();
-            delete m_pTextConn;
-            m_pTextConn = nullptr;
+            this->__Close_Socket();
             /* 提示请求失败 */
             emit this->signal_request_result(false, m_peerhost);
         }
         else
         {/* 被请求者，注意：主动关闭应该有请求者发出，不然服务端口会处于timewait状态 */
             qDebug() << "被请求者关闭连接";
-            m_pTextConn->close();
-            delete m_pTextConn;
-            m_pTextConn = nullptr;
+            this->__Close_Socket();
         }
     }
     else /* 聊天消息(Base64编码) */
