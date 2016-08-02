@@ -1,16 +1,23 @@
 #ifndef MSGTYPE_H
 #define MSGTYPE_H
 
+#include <QString>
+
+typedef struct
+{
+    QString filepath;            //文件路径
+    QString transname;           //传输时的文件名，针对传输同名文件的情况
+    bool is;                     //判断是否是发送缩略图，对文件类无效
+}Source;
 
 #define PICTURE_NAME_FILTER "Image Files(*.png *.jpg)"
 
-/* 由特定的图片、文件传输套接字使用 */
-#define MSG_BREVIARY_IMAGE 'A'   // msg format -> msgtype:timestring:filename:content;
-#define MSG_IMAGE          'B'   // msg format -> msgtype:timestring:filename:content;
-#define MSG_FILE           'D'   // msg format -> msgtype:timestring:filename:content;
+#define END                QString("END")
 /* 由文本传输套接字使用 */
+#define MSG_DOWNLOAD_IMAGE 'B'   // msg format -> msgtype:timestring:filename;
+#define MSG_DOWNLOAD_FILE  'D'   // msg format -> msgtype:timestring:filename;
+#define MSG_IMAGE_INFO     'H'   // msg format -> no(processed by 图片传输套接字)
 #define MSG_FILE_INFO      'C'   // msg format -> msgtype:timestring:filename;
-#define MSG_IMAGE_INFO     'H'   // msg format -> msgtype:timestring:filename;
 #define MSG_TEXT           'E'   // msg format -> msgtype:timestring:content;
 #define MSG_EMOJI          'F'   // msg format -> msgtype:timestring:content;
 #define MSG_SHAKE          'G'   // msg format -> msgtype:timestring:;

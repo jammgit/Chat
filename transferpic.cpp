@@ -8,31 +8,79 @@ TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
 
 
 /* 发送图片、文件 */
-void TransferPic::Process(const QString& filepath)
+void TransferPic::Process(Source& source)
 {
     if (!m_pSocket)
         return;
 
-    QByteArray bytes;
-    QBuffer buffer(&bytes);
-    if (filepath.contains(".jpg", Qt::CaseInsensitive))
+    if (source.is)
     {
-         QPixmap(filepath).save(&buffer, "jpg");
+        /* 发送缩略图 */
+        QImage image(source.filepath);
+        qDebug() << image.byteCount();
+        QImage image1 = image.scaled(200,image.height()/(image.width()/200));
+        qDebug() << image1.byteCount();
+        image1.save(source.filepath = QString("./tmp/%1").arg(source.filepath.split("\\").back()));
     }
-    else if (filepath.contains(".png", Qt::CaseInsensitive))
+    QString base = source.transname.toUtf8().toBase64();
+    QFile file(source.filepath);
+    file.open(QFile::ReadOnly);
+    qint64 ret;
+    while (!file.atEnd())
     {
-        QPixmap(filepath).save(&buffer, "png");
+        QString text(file.read(1024));
+        /* 非/二进制文件，故最好先utf8 */
+        if (text.length() < 1024)
+        {
+             ret = m_pSocket->write((base + ":"
+                                    + END.toUtf8().toBase64() + ":"
+                                    + text.toUtf8().toBase64() + ";").toLatin1());
+             break;
+        }
+        else
+        {
+            ret = m_pSocket->write((base + ":" + text.toUtf8().toBase64() + ";").toLatin1());
+        }
+        if (ret == -1)
+        {
+            emit this->signal_peer_close();
+        }
     }
-    else
-    {
-        qDebug() << "unknow image";
-        return;
-    }
-    qint64 ret = m_pSocket->write(buffer.data());
+    file.close();
     if (ret == -1)
-    {
         emit this->signal_peer_close();
-    }
+//    QByteArray bytes;
+//    QBuffer buffer(&bytes);
+//    if (source.filepath.contains(".jpg", Qt::CaseInsensitive))
+//    {
+//         QPixmap(filepath).save(&buffer, "jpg");
+//    }
+//    else if (source.filepath.contains(".png", Qt::CaseInsensitive))
+//    {
+//        QPixmap(filepath).save(&buffer, "png");
+//    }
+//    else
+//    {
+//        qDebug() << "unknow image";
+//        return;
+//    }
+//    qint64 ret;
+//    ret = m_pSocket->write(QString(source.transname).toUtf8().toBase64() + ":");
+//    if (ret == -1)
+//    {
+//        emit this->signal_peer_close();
+//        return;
+//    }
+//    ret = m_pSocket->write(buffer.data());
+//    if (ret == -1)
+//    {
+//        emit this->signal_peer_close();
+//        return;
+//    }
 
-
+//    ret = m_pSocket->write(QString(":") + END.toUtf8().toBase64());
+//    if (ret == -1)
+//    {
+//        emit this->signal_peer_close();
+//    }
 }

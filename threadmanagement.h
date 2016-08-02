@@ -14,6 +14,9 @@
 #include <QThread>
 #include <QList>
 #include <QtNetwork/QTcpSocket>
+#include "msginfo.h"
+
+
 
 template<class T>
 class ThreadManagement : public QThread
@@ -26,16 +29,18 @@ public:
     /* 停止线程 */
     void stop();
     /* 添加任务 */
-    int Append(const QString& filename);
+    int Append(const QString& filename, const QString& transname, bool is = false);
+    /* */
 
     T *GetClassPoniter()
     {
         return m_pClass;
     }
-    ~ThreadManagement();
 
-public:
+    ~ThreadManagement();
+private:
     explicit ThreadManagement(QTcpSocket*socket, int maxqueue = 128, QObject *parent = 0);
+
 
 signals:
 
@@ -49,7 +54,7 @@ private:
     /* 是否停止线程 */
     bool m_stop;
     /* 任务链表 */
-    QList<QString> m_tasklist;
+    QList<Source> m_tasklist;
     /* 资源访问互斥量 */
     QMutex *m_pMutex;
     /* 通知有新任务 */
@@ -94,7 +99,7 @@ void ThreadManagement<T>::run()
     {
         m_pSem->acquire();
         m_pMutex->lock();
-        QString file = m_tasklist.front();
+        Source file = m_tasklist.front();
         m_tasklist.pop_front();
         m_pMutex->unlock();
         /* 开始读取文件并发送,实例类必须实现Process函数 */
@@ -104,7 +109,7 @@ void ThreadManagement<T>::run()
 
 /* 添加任务 */
 template<class T>
-int ThreadManagement<T>::Append(const QString& filename)
+int ThreadManagement<T>::Append(const QString& filename, const QString& transname, bool is)
 {
     m_pMutex->lock();
     if (m_tasklist.size() > m_maxtask)
@@ -112,7 +117,11 @@ int ThreadManagement<T>::Append(const QString& filename)
         m_pMutex->unlock();
         return -1;
     }
-    m_tasklist.push_back(filename);
+    Source s;
+    s.filepath = filename;
+    s.transname = transname;
+    s.is = is;
+    m_tasklist.push_back(s);
     m_pMutex->unlock();
     m_pSem->release();
     return 1;

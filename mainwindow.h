@@ -80,6 +80,8 @@ private slots:  /* ------------窗口控件槽函数---------------- */
 
     void on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1);
 
+    void on_COMBO_HAD_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1);
+
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
     void slot_request_result(bool ret, const chat_host_t& peerhost);
@@ -97,6 +99,12 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_show_time();
 
     void slot_shake_window();
+
+    void slot_recv_picture_info(const QString& file);
+    void slot_recv_file_info(const QString& file);
+    void slot_recv_file_success(const QString& file);
+    void slot_recv_picture_success(const QString& file);
+
 
 public slots: /* --------------视频信息槽函数---------------- */
 

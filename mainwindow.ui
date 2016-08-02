@@ -536,8 +536,24 @@
    <widget class="QComboBox" name="COMBO_DOWN_FILE_LIST">
     <property name="geometry">
      <rect>
-      <x>620</x>
-      <y>421</y>
+      <x>420</x>
+      <y>580</y>
+      <width>131</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="acceptDrops">
+     <bool>false</bool>
+    </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="COMBO_HAD_DOWN_FILE_LIST">
+    <property name="geometry">
+     <rect>
+      <x>560</x>
+      <y>580</y>
       <width>131</width>
       <height>30</height>
      </rect>

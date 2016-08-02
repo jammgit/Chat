@@ -11,6 +11,7 @@
 #include <QString>
 #include <QDate>
 #include <QDir>
+#include <QMap>
 #include <stdlib.h>
 #include "findterminal.h"
 #include "msginfo.h"
@@ -22,9 +23,6 @@
  * 连接建立顺序：text -> file -> picture
 */
 
-//#define file    'f'
-//#define picture 'p'
-//#define text    't'
 
 
 class TextChat : public QObject
@@ -41,7 +39,7 @@ public:
     /* 断开聊天，此时需要注意避开服务端主动断开的timewait状态 */
     void Close();
     /* 发送信息函数,input plain text,return html text */
-    const QString SendMsg(char msgtype, const QString& text);
+    const QString SendMsg(char msgtype, QString& text);
     /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
     void SetFindTerminal(FindTerminal *ter)
     {
@@ -71,8 +69,15 @@ signals:
     void signal_peer_close();
     /* 发送出错，对方已关闭 */
     void signal_send_error();
-
+    /* 抖动窗口 */
     void signal_shake_window();
+
+    void signal_recv_picture_info(const QString& info);
+    void signal_recv_file_info(const QString& info);
+    /* 文件接收完成 */
+    void signal_recv_picture_success(const QString &file);
+    void signal_recv_file_success(const QString& file);
+
 
 private slots:
     /* connect成功,那么建立readyread，否则error()被发送 */
@@ -83,10 +88,13 @@ private slots:
     void slot_is_accept();
     /* 连接套接字：接受新消息 */
     void slot_recv_msg();
-    /* 接受图片 */
-    void slot_recv_picture();
-    /* 接受文件 */
+    /* */
     void slot_recv_file();
+    void slot_recv_picture();
+    /* 转发来自传输图片、文件类的信号 */
+    void slot_peer_close();
+
+
 
 private:
     /* 判断是否能够开始聊天 */
@@ -95,10 +103,6 @@ private:
     QTcpServer *m_pListen;
     /* 文本连接套接字 */
     QTcpSocket *m_pTextConn;
-    /* 真正传输文件时使用的套接字 */
-    QTcpSocket *m_pFileConn;
-    /* 传输图片时的套接字 */
-    QTcpSocket *m_pPicConn;
     /* 文件管理线程 */
     ThreadManagement<TransferFile> *m_pFileMng;
     /* 图片管理线程 */
@@ -107,6 +111,11 @@ private:
     FindTerminal *m_pTer;
     /* 在连接时，对端的地址信息 */
     chat_host_t m_peerhost;
+    /* 用户发送，接受到的文件、图片列表记录<不包含路径文件名,完整路径名> */
+    QMap<QString, QString> m_files;
+    /* 保存打开的文件描述符，<文件名，打开文件的描述符>*/
+    QMap<QString, QFile*> m_openfiles;
+    QMap<QString, QFile*> m_openpics;
 };
 
 #endif // TEXTCHAT_H

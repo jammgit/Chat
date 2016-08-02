@@ -10,6 +10,10 @@
 #include <QByteArray>
 #include "msginfo.h"
 
+/*  传输格式：        文件名(base64编码) +':'+ 文件内容(base64编码)+';'
+ *  文件传输完成标志： 文件名(base64编码)  + ':' +剩余文件内容(base64编码) +':'+"END"(base64编码) ';'
+*/
+
 class TransferFile : public QObject
 {
     Q_OBJECT
@@ -19,7 +23,7 @@ public:
     {
         delete m_pSocket;
     }
-    void Process(const QString& filepath);
+    void Process(Source& source);
     QTcpSocket *GetSocket()
     {
         return m_pSocket;
