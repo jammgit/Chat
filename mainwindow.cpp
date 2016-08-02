@@ -395,10 +395,13 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     else
         fd->close();
     qDebug() << fileNameList;
+    QString html;
     foreach (QString path, fileNameList) {
-       m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
+       html += m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
     }
-
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
@@ -426,10 +429,13 @@ void MainWindow::on_BTN_FILE_clicked()
     else
         fd->close();
     qDebug() << fileNameList;
+    QString html;
     foreach (QString path, fileNameList) {
-       m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
+       html += m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
     }
-
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
@@ -587,13 +593,19 @@ void MainWindow::slot_raise_video()
 /* 对端关闭连接 */
 void MainWindow::slot_peer_close()
 {
-    QMessageBox::information(this, "聊天关闭", "对方结束了聊天");
+    QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
     qDebug() << "?";
     this->__Set_Session(false);
     qDebug() << "??";
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
     ui->COMBO_HAD_DOWN_FILE_LIST->clear();
+}
+
+void MainWindow::slot_peer_conn_err()
+{
+    QMessageBox::information(nullptr, "通信错误", "对方建立网络连接过程出错");
+    m_pTextChat->Close();
 }
 
 /* 接受消息 */
@@ -650,14 +662,14 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         bool b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::FILE);
         if (!b)
         {
-            m_pTextChat->Close();
+            m_pTextChat->Close(CONN_ERR);
             QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
             return;
         }
         b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::PICTURE);
         if (!b)
         {
-           m_pTextChat->Close();
+           m_pTextChat->Close(CONN_ERR);
            QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
            return;
         }

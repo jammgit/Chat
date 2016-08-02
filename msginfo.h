@@ -57,9 +57,10 @@ typedef struct
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888
 /* 类内部调用的控制消息，非Base64编码 */
-#define ACCEPT QString("accept").toUtf8()
-#define REJECT QString("reject").toUtf8()
-#define CLOSE  QString("!").toUtf8()
+#define ACCEPT   QString("accept").toUtf8()
+#define REJECT   QString("reject").toUtf8()
+#define CLOSE    QString("!").toUtf8()
+#define CONN_ERR QString("~").toUtf8()
 /* 这是糟糕的一个设计：发送此文本表示结束聊天，所以如果用户输入
  * 此文本即发生结束聊天，问题来源：QT socket同步关闭！不过--
  * Base64编码解决了问题  */

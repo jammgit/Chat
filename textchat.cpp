@@ -166,11 +166,11 @@ void TextChat::slot_connect_failed(QAbstractSocket::SocketError err)
 }
 
 /* 关闭连接 */
-void TextChat::Close()
+void TextChat::Close(QByteArray close)
 {
     if (m_pTextConn)
     {
-        m_pTextConn->write(CLOSE);
+        m_pTextConn->write(close);
         m_pTextConn->waitForBytesWritten();
         qDebug() << "close";
         this->__Close_Socket();
@@ -382,6 +382,12 @@ void TextChat::slot_recv_msg()
                 m_isConnect = false;
                 /*通知窗口更新*/
                 emit this->signal_peer_close();
+            }
+            else if (str == QString(CONN_ERR))
+            {
+                this->__Close_Socket();
+                m_isConnect = false;
+                emit this->signal_peer_conn_err();
             }
             else                                 //Base64编码
             {

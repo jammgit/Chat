@@ -91,6 +91,8 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_recv_text_msg(QList<QString>& text, QList<QString>& emojis);
     /* 关闭连接信号函数 */
     void slot_peer_close();
+    /* */
+    void slot_peer_conn_err();
     /* 通信出错 */
     void slot_send_error();
     /* 提升视频窗口 */
