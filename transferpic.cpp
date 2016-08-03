@@ -3,7 +3,8 @@
 TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
     : QObject(parent),m_pSocket(socket)
 {
-
+    if (m_pSocket)
+        connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
 }
 
 

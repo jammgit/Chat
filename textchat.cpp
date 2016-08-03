@@ -100,12 +100,12 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
         if (!m_pFileMng)
         {
             m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                                QHostAddress(m_peerhost.address));
+                                                                                QHostAddress(m_peerhost.address),
+                                                                                this);
             m_pFileMng->start();
-            connect(m_pFileMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
-                    this, SLOT(slot_peer_close()));
-            connect(m_pFileMng->GetClassPoniter(), SIGNAL(signal_recv_file_success(QString)),
-                    this, SLOT(slot_recv_file_success(QString)));
+
+
+            return true;
 //            if (!b)
 //            {
 //                this->__Close_Socket();
@@ -119,12 +119,15 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
         if (!m_pPicMng)
         {
             m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(m_pListen,
-                                                                               QHostAddress(m_peerhost.address));
+                                                                              QHostAddress(m_peerhost.address),
+                                                                              this);
+
+//            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
+//                    this, SLOT(slot_peer_close()));
+//            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_recv_picture_success(QString)),
+//                    this, SLOT(slot_recv_picture_success(QString)));
             m_pPicMng->start();
-            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
-                    this, SLOT(slot_peer_close()));
-            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_recv_picture_success(QString)),
-                    this, SLOT(slot_recv_picture_success(QString)));
+            return true;
 //            QTcpSocket* tmp = new QTcpSocket;
 //            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
 //            if (tmp->waitForConnected())
@@ -301,7 +304,8 @@ void TextChat::slot_is_accept()
     else if (!m_pFileMng)
     {/* */
         m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                            QHostAddress(m_peerhost.address));
+                                                                            QHostAddress(m_peerhost.address),
+                                                                            this);
         m_pFileMng->start();
 //        bool b = m_pFileMng->CreateSocket(m_pListen);
 //        if (!b)
@@ -313,13 +317,18 @@ void TextChat::slot_is_accept()
     else if (!m_pPicMng)
     {
         m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(m_pListen,
-                                                                           QHostAddress(m_peerhost.address));
+                                                                          QHostAddress(m_peerhost.address),
+                                                                          this);
 //        bool b = m_pFileMng->CreateSocket(m_pListen);
 //        if (!b)
 //        {
 //            this->__Close_Socket();
 //            return;
 //        }
+//        connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
+//                this, SLOT(slot_peer_close()));
+//        connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_recv_picture_success(QString)),
+//                this, SLOT(slot_recv_picture_success(QString)));
         m_pPicMng->start();
 
         /* 当三个必须的套接字都成功建立连接后，询问用户是否同意请求 */

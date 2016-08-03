@@ -151,7 +151,6 @@ void MainWindow::__Init()
     connect(m_pShowTimer, SIGNAL(timeout()), this, SLOT(slot_show_time()));
     m_is_show_time = true;
 
-
     /* 没两秒提升video窗口，暂时没其他办法 */
     m_pTimer = new QTimer;
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(slot_raise_video()));

@@ -3,6 +3,8 @@
 TransferFile::TransferFile(QTcpSocket*socket, QObject *parent)
     : QObject(parent),m_pSocket(socket)
 {
+    if (m_pSocket)
+        connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
 }
 
 /* 发送图片、文件 */
