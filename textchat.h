@@ -75,11 +75,11 @@ signals:
     /* 抖动窗口 */
     void signal_shake_window();
 
+    /* */
     void signal_recv_picture_info(const QString& info);
     void signal_recv_file_info(const QString& info);
-    /* 文件接收完成 */
-    void signal_recv_picture_success(const QString &file);
-    void signal_recv_file_success(const QString& file);
+
+
 
 
 private slots:
@@ -91,9 +91,6 @@ private slots:
     void slot_is_accept();
     /* 连接套接字：接受新消息 */
     void slot_recv_msg();
-    /* */
-    void slot_recv_file();
-    void slot_recv_picture();
     /* 转发来自传输图片、文件类的信号 */
     void slot_peer_close();
 
@@ -114,11 +111,7 @@ private:
     FindTerminal *m_pTer;
     /* 在连接时，对端的地址信息 */
     chat_host_t m_peerhost;
-    /* 用户发送，接受到的文件、图片列表记录<不包含路径文件名,完整路径名> */
-    QMap<QString, QString> m_files;
-    /* 保存打开的文件描述符，<文件名，打开文件的描述符>*/
-    QMap<QString, QFile*> m_openfiles;
-    QMap<QString, QFile*> m_openpics;
+
 };
 
 #endif // TEXTCHAT_H

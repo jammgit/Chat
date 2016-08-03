@@ -14,6 +14,8 @@
 #include <QMessageBox>
 #include <QThread>
 #include <QList>
+#include <QTcpServer>
+#include <QHostAddress>
 #include <QtNetwork/QTcpSocket>
 #include "msginfo.h"
 
@@ -25,7 +27,8 @@ class ThreadManagement : public QThread
     /* 运行线程 */
     void run();
 public:
-    static ThreadManagement<T>* CreateThreadManagement(QTcpSocket*socket, int maxqueue = 128);
+    static ThreadManagement<T>* CreateThreadManagement(
+            QTcpServer*socket,const QHostAddress& addr, int maxqueue = 128);
 
     /* 停止线程 */
     void stop();
@@ -40,8 +43,10 @@ public:
 
     ~ThreadManagement();
 private:
-    explicit ThreadManagement(QTcpSocket*socket, int maxqueue = 128, QObject *parent = 0);
-
+    explicit ThreadManagement(QTcpServer*socket, const QHostAddress& addr,
+                              int maxqueue = 128, QObject *parent = 0);
+    /* */
+    bool ConnectHost();
 
 signals:
 
@@ -62,15 +67,20 @@ private:
     QSemaphore *m_pSem;
     /* 设定的任务数量最大值 */
     int m_maxtask;
-
+    /* */
+    QTcpServer *m_pListen;
+    /* */
+    QHostAddress m_peer_addr;
 };
 
 
 template<class T>
-ThreadManagement<T>::ThreadManagement(QTcpSocket*socket, int maxqueue, QObject *parent)
-    : QThread(parent),m_pClass(new T(socket)),m_pMutex(new QMutex),m_pSem(new QSemaphore)
+ThreadManagement<T>::ThreadManagement(QTcpServer*socket,const QHostAddress&addr, int maxqueue, QObject *parent)
+    : QThread(parent),m_pClass(nullptr),m_pMutex(new QMutex),m_pSem(new QSemaphore)
+    ,m_pListen(socket)
 {
     m_maxtask = maxqueue;
+    m_peer_addr = addr;
     m_stop = false;
 }
 
@@ -85,18 +95,55 @@ ThreadManagement<T>::~ThreadManagement()
 /* 创建线程 */
 template<class T>
 ThreadManagement<T>* ThreadManagement<T>::CreateThreadManagement(
-        QTcpSocket*socket, int maxqueue)
+        QTcpServer*socket,const QHostAddress& addr, int maxqueue)
 {
     if (maxqueue > MAX_TASK_NUM)
         return nullptr;
-    return new ThreadManagement<T>(socket, maxqueue);
+    return new ThreadManagement<T>(socket, addr, maxqueue);
+}
+
+
+
+template<class T>
+bool ThreadManagement<T>::ConnectHost()
+{
+    QTcpSocket *tmp = new QTcpSocket;
+    tmp->connectToHost(m_peer_addr, TEXTCHAT_SERVER_PORT);
+    if (tmp->waitForConnected())
+    {
+        qDebug() << "TextChat connected";
+        m_pClass->SetSocket(tmp);
+        return true;
+    }
+    else
+    {
+        qDebug() << "TextChat connect failed";
+        delete tmp;
+        return false;
+    }
 }
 
 /* 运行线程 */
 template<class T>
 void ThreadManagement<T>::run()
 {
+    if (m_pListen->hasPendingConnections())
+    {/* recv */
+        QTcpSocket *tmp = m_pListen->nextPendingConnection();
+        if (!tmp)
+        {
 
+        }
+        m_pClass->SetSocket(tmp);
+    }
+    else
+    {/* send */
+        bool tmp = this->ConnectHost();
+        if (!tmp)
+        {
+
+        }
+    }
     //QMessageBox::information(nullptr, "sada", "sadas");
     while (!m_stop)
     {

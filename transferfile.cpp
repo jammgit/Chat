@@ -41,3 +41,35 @@ void TransferFile::Process(Source& source)
 
 }
 
+/* 接受文件 */
+void TransferFile::slot_recv_file()
+{
+
+    QString recv(m_pSocket->readAll());
+    QList<QString> msgs = recv.split(";");
+    msgs.pop_back();
+
+    while (!msgs.isEmpty())
+    {
+        QList<QString> onemsg = msgs.front().split(":");
+        msgs.pop_front();
+        QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
+        if (m_openfiles.find(file) == m_openfiles.end())
+        {/* 如果该文件还没创建,则创建并保存 */
+            QFile* fd = new QFile(QString("./tmp/")+file);
+            fd->open(QFile::WriteOnly);
+            m_openfiles[file] = fd;
+        }
+
+        m_openfiles[file]->write(QByteArray::fromBase64(onemsg[1].toLatin1()));
+        if (msgs.size() == 3)
+        {/* 说明文件传输完成 */
+            QFile* tmp = m_openfiles[file];
+            m_openfiles.remove(file);
+            tmp->close();
+            delete tmp;
+            emit this->signal_recv_file_success(file);
+        }
+    }
+}
+

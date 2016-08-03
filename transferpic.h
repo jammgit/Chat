@@ -7,6 +7,7 @@
 #include <QFile>
 #include <QImage>
 #include <QPixmap>
+#include <QMap>
 #include <QBuffer>
 #include <QByteArray>
 #include "msginfo.h"
@@ -19,23 +20,41 @@ class TransferPic : public QObject
 {
     Q_OBJECT
 public:
-    explicit TransferPic(QTcpSocket*socket, QObject *parent = 0);
+    explicit TransferPic(QTcpSocket*socket = nullptr, QObject *parent = 0);
     ~TransferPic()
     {
-        delete m_pSocket;
+        if(m_pSocket)
+        {
+            m_pSocket->close();
+            delete m_pSocket;
+        }
     }
     void Process(Source& source);
+    void SetSocket(QTcpSocket *socket)
+    {
+        m_pSocket = socket;
+        if (m_pSocket)
+            connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
+    }
     QTcpSocket *GetSocket()
     {
         return m_pSocket;
     }
 signals:
     void signal_peer_close();
+    /* 文件接收完成 */
+    void signal_recv_picture_success(const QString &file);
 
-public slots:
+private slots:
+    void slot_recv_picture();
 
 private:
     QTcpSocket *m_pSocket;
+    /* 用户发送，接受到的文件、图片列表记录<不包含路径文件名,完整路径名> */
+    QMap<QString, QString> m_files;
+    /* 保存打开的文件描述符，<文件名，打开文件的描述符>*/
+    QMap<QString, QFile*> m_openfiles;
+    QMap<QString, QFile*> m_openpics;
 };
 
 #endif // TRANSFERPIC_H

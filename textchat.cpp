@@ -48,14 +48,12 @@ void TextChat::__Close_Socket()
     if (m_pFileMng)
     {
         m_pFileMng->exit();
-        m_pFileMng->GetClassPoniter()->GetSocket()->close();
         delete m_pFileMng;
         m_pFileMng = nullptr;
     }
     if (m_pPicMng)
     {
         m_pPicMng->exit();
-        m_pPicMng->GetClassPoniter()->GetSocket()->close();
         delete m_pPicMng;
         m_pPicMng = nullptr;
     }
@@ -104,45 +102,45 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
     case FILE:
         if (!m_pFileMng)
         {
-            QTcpSocket *tmp = new QTcpSocket;
-            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
-            if (tmp->waitForConnected())
-            {
-                qDebug() << "TextChat connected";
-                m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(tmp);
-                connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
-                m_pFileMng->start();
-                return true;
-            }
-            else
-            {
-                qDebug() << "TextChat connect failed";
-                delete tmp;
-                this->__Close_Socket();
-                return false;
-            }
+            m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
+                                                                                m_peerhost);
+            m_pFileMng->start();
+            connect(m_pFileMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
+                    this, SLOT(slot_peer_close()));
+//            if (!b)
+//            {
+//                this->__Close_Socket();
+//                return false;
+//            }
+//            m_pFileMng->start();
+//            return true;
         }
         break;
     case PICTURE:
         if (!m_pPicMng)
         {
-            QTcpSocket* tmp = new QTcpSocket;
-            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
-            if (tmp->waitForConnected())
-            {
-                qDebug() << "TextChat connected";
-                m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(tmp);
-                connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
-                m_pPicMng->start();
-                return true;
-            }
-            else
-            {
-                qDebug() << "TextChat connect failed";
-                delete tmp;
-                this->__Close_Socket();
-                return false;
-            }
+            m_pPicMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
+                                                                                m_peerhost);
+            m_pPicMng->start();
+            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
+                    this, SLOT(slot_peer_close()));
+//            QTcpSocket* tmp = new QTcpSocket;
+//            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+//            if (tmp->waitForConnected())
+//            {
+//                qDebug() << "TextChat connected";
+//                m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(tmp);
+//                connect(m_pPicMng->GetClassPoniter()->GetSocket(), SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
+//                m_pPicMng->start();
+//                return true;
+//            }
+//            else
+//            {
+//                qDebug() << "TextChat connect failed";
+//                delete tmp;
+//                this->__Close_Socket();
+//                return false;
+//            }
         }
         break;
     default:
@@ -211,6 +209,7 @@ const QString TextChat::SendMsg(char msgtype, QString& text)
                                         + text.toUtf8().toBase64()+';');
             str_ret = QString("<p align=\"right\" background-color=\"#895612\">") + text + QString("</p>");
             break;
+
         case MSG_FILE_INFO:     /* 相对、完整路径 */
             tmp = text;
             if (m_files.find(text.split("/").back()) != m_files.end())
@@ -227,6 +226,7 @@ const QString TextChat::SendMsg(char msgtype, QString& text)
             str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
                     + "你发送了文件[" + text + "]" + TEXT_BACK;
             break;
+
         case MSG_IMAGE_INFO:    /* 相对、完整路径(通知picture manage 发送缩略图) */
             tmp = text;
             if (m_files.find(text.split("/").back()) != m_files.end())
@@ -294,32 +294,29 @@ void TextChat::slot_is_accept()
         }
     }
     else if (!m_pFileMng)
-    {
-        QTcpSocket *tmp;
-        if (m_pListen->hasPendingConnections())
-            tmp = m_pListen->nextPendingConnection();
-        if (!tmp)
-        {
-            this->__Close_Socket();
-            return;
-        }
-        m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(tmp);
-        connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
-
-
+    {/* */
+        m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
+                                                                            m_peerhost);
+        m_pFileMng->start();
+//        bool b = m_pFileMng->CreateSocket(m_pListen);
+//        if (!b)
+//        {
+//            this->__Close_Socket();
+//            return;
+//        }
     }
     else if (!m_pPicMng)
     {
-        QTcpSocket *tmp;
-        if (m_pListen->hasPendingConnections())
-            tmp = m_pListen->nextPendingConnection();
-        if (!tmp)
-        {
-            this->__Close_Socket();
-            return;
-        }
-        m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(tmp);
-        connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+        m_pPicMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
+                                                                            m_peerhost);
+//        bool b = m_pFileMng->CreateSocket(m_pListen);
+//        if (!b)
+//        {
+//            this->__Close_Socket();
+//            return;
+//        }
+        m_pPicMng->start();
+
         /* 当三个必须的套接字都成功建立连接后，询问用户是否同意请求 */
         QMessageBox::StandardButton btn;
         /* 这是一个糟糕的设计：仅为获得findterminal类的map,从而获得peername */
@@ -334,8 +331,6 @@ void TextChat::slot_is_accept()
         {
             m_pTextConn->write(ACCEPT);
             m_isConnect = true;
-            m_pFileMng->start();
-            m_pPicMng->start();
             emit this->signal_request_result(true, m_peerhost);
         }
         else
@@ -344,6 +339,7 @@ void TextChat::slot_is_accept()
             /* UNIX网络编程中，调用close会把没发送的缓冲区数据清空还是发送完？ */
             m_pTextConn->waitForBytesWritten();
             emit m_pTextConn->readyRead();
+            this->__Close_Socket();
         }
     }
 }
@@ -461,70 +457,6 @@ void TextChat::slot_recv_msg()
 
 }
 
-/* 接受文件 */
-void TextChat::slot_recv_file()
-{
-
-    QString recv(m_pFileMng->GetClassPoniter()->GetSocket()->readAll());
-    QList<QString> msgs = recv.split(";");
-    msgs.pop_back();
-
-    while (!msgs.isEmpty())
-    {
-        QList<QString> onemsg = msgs.front().split(":");
-        msgs.pop_front();
-        QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
-        if (m_openfiles.find(file) == m_openfiles.end())
-        {/* 如果该文件还没创建,则创建并保存 */
-            QFile* fd = new QFile(QString("./tmp")+file);
-            fd->open(QFile::WriteOnly);
-            m_openfiles[file] = fd;
-        }
-
-        m_openfiles[file]->write(QByteArray::fromBase64(onemsg[1].toLatin1()));
-        if (msgs.size() == 3)
-        {/* 说明文件传输完成 */
-            QFile* tmp = m_openfiles[file];
-            m_openfiles.remove(file);
-            tmp->close();
-            delete tmp;
-            emit this->signal_recv_file_success(file);
-        }
-    }
-}
-
-/* 接受图片 */
-void TextChat::slot_recv_picture()
-{
-    qDebug() << "recv picture";
-    QString recv(m_pPicMng->GetClassPoniter()->GetSocket()->readAll());
-    QList<QString> msgs = recv.split(";");
-    msgs.pop_back();
-
-    while (!msgs.isEmpty())
-    {
-        QList<QString> onemsg = msgs.front().split(":");
-        msgs.pop_front();
-        QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
-        if (m_openpics.find(file) == m_openpics.end())
-        {/* 如果该文件还没创建,则创建并保存 */
-            QFile* fd = new QFile(QString("./tmp")+file);
-            fd->open(QFile::WriteOnly);
-            m_openpics[file] = fd;
-        }
-
-        m_openpics[file]->write(QByteArray::fromBase64(onemsg[1].toLatin1()));
-        if (msgs.size() == 3)
-        {/* 说明文件传输完成 */
-            QFile* tmp = m_openpics[file];
-            m_openpics.remove(file);
-            tmp->close();
-            delete tmp;
-
-            emit this->signal_recv_picture_success(file);
-        }
-    }
-}
 
 void TextChat::slot_peer_close()
 {
