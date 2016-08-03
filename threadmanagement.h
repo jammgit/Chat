@@ -11,6 +11,7 @@
 #include <QMutex>
 #include <QSemaphore>
 #include <QString>
+#include <QMessageBox>
 #include <QThread>
 #include <QList>
 #include <QtNetwork/QTcpSocket>
@@ -21,11 +22,11 @@
 template<class T>
 class ThreadManagement : public QThread
 {
-
-public:
-    static ThreadManagement<T>* CreateThreadManagement(QTcpSocket*socket, int maxqueue = 128);
     /* 运行线程 */
     void run();
+public:
+    static ThreadManagement<T>* CreateThreadManagement(QTcpSocket*socket, int maxqueue = 128);
+
     /* 停止线程 */
     void stop();
     /* 添加任务 */
@@ -88,16 +89,20 @@ ThreadManagement<T>* ThreadManagement<T>::CreateThreadManagement(
 {
     if (maxqueue > MAX_TASK_NUM)
         return nullptr;
-    return new ThreadManagement(socket, maxqueue);
+    return new ThreadManagement<T>(socket, maxqueue);
 }
 
 /* 运行线程 */
 template<class T>
 void ThreadManagement<T>::run()
 {
+
+    //QMessageBox::information(nullptr, "sada", "sadas");
     while (!m_stop)
     {
+        qDebug() << "acquire";
         m_pSem->acquire();
+        qDebug() << "Process one picture";
         m_pMutex->lock();
         Source file = m_tasklist.front();
         m_tasklist.pop_front();
@@ -111,6 +116,7 @@ void ThreadManagement<T>::run()
 template<class T>
 int ThreadManagement<T>::Append(const QString& filename, const QString& transname, bool is)
 {
+    qDebug() << "append";
     m_pMutex->lock();
     if (m_tasklist.size() > m_maxtask)
     {

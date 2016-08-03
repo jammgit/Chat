@@ -10,6 +10,7 @@ TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
 /* 发送图片、文件 */
 void TransferPic::Process(Source& source)
 {
+
     if (!m_pSocket)
         return;
 

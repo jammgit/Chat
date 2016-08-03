@@ -306,6 +306,7 @@ void TextChat::slot_is_accept()
         m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(tmp);
         connect(tmp, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
 
+
     }
     else if (!m_pPicMng)
     {
@@ -333,6 +334,8 @@ void TextChat::slot_is_accept()
         {
             m_pTextConn->write(ACCEPT);
             m_isConnect = true;
+            m_pFileMng->start();
+            m_pPicMng->start();
             emit this->signal_request_result(true, m_peerhost);
         }
         else
@@ -461,6 +464,7 @@ void TextChat::slot_recv_msg()
 /* 接受文件 */
 void TextChat::slot_recv_file()
 {
+
     QString recv(m_pFileMng->GetClassPoniter()->GetSocket()->readAll());
     QList<QString> msgs = recv.split(";");
     msgs.pop_back();
@@ -492,6 +496,7 @@ void TextChat::slot_recv_file()
 /* 接受图片 */
 void TextChat::slot_recv_picture()
 {
+    qDebug() << "recv picture";
     QString recv(m_pPicMng->GetClassPoniter()->GetSocket()->readAll());
     QList<QString> msgs = recv.split(";");
     msgs.pop_back();
