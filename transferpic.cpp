@@ -20,7 +20,7 @@ void TransferPic::Process(Source& source)
         qDebug() << image.byteCount();
         QImage image1 = image.scaled(200,image.height()/(image.width()/200));
         qDebug() << image1.byteCount();
-        image1.save(source.filepath = QString("./tmp/%1").arg(source.filepath.split("\\").back()));
+        image1.save(source.filepath = QString("./tmp/%1").arg(source.filepath.split("/").back()));
     }
     QString base = source.transname.toUtf8().toBase64();
     QFile file(source.filepath);

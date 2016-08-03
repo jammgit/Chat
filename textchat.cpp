@@ -40,6 +40,7 @@ void TextChat::__Close_Socket()
 {
     if (m_pTextConn)
     {
+
         m_pTextConn->close();
         delete m_pTextConn;
         m_pTextConn = nullptr;
@@ -212,30 +213,31 @@ const QString TextChat::SendMsg(char msgtype, QString& text)
             break;
         case MSG_FILE_INFO:     /* 相对、完整路径 */
             tmp = text;
-            if (m_files.find(text.split("\\").back()) != m_files.end())
+            if (m_files.find(text.split("/").back()) != m_files.end())
             {/* 如果存在同名文件,插入一个时间值做分辨 */
                 int idx = text.lastIndexOf(".");
                 text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
             }
             /* 添加记录 */
-            m_files[text.split("\\").back()] = tmp;
+            m_files[text.split("/").back()] = tmp;
 
             ret = m_pTextConn->write(QString(MSG_FILE_INFO).toUtf8().toBase64() + ':'
                                         + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
-                                        + text.split("\\").back().toUtf8().toBase64()+';');
+                                        + text.split("/").back().toUtf8().toBase64()+';');
             str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
                     + "你发送了文件[" + text + "]" + TEXT_BACK;
             break;
         case MSG_IMAGE_INFO:    /* 相对、完整路径(通知picture manage 发送缩略图) */
             tmp = text;
-            if (m_files.find(text.split("\\").back()) != m_files.end())
+            if (m_files.find(text.split("/").back()) != m_files.end())
             {/* 如果存在同名文件,插入一个时间值做分辨 */
                 int idx = text.lastIndexOf(".");
                 text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
             }
-            m_files[text.split("\\").back()] = tmp;
+            qDebug() << text.split("/").back();
+            m_files[text.split("/").back()] = tmp;
              /* 向线程添加任务 */
-            m_pPicMng->Append(tmp, text.split("\\").back(), true);
+            m_pPicMng->Append(tmp, text.split("/").back(), true);
             str_ret = PIC_HTML_STRING.arg(RIGHT, text, QString::number(100),QString::number(200) );
             /* 添加记录 */
 

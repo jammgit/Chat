@@ -330,19 +330,23 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     if (!b)
     {
         QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
+        ui->LIST_HOST->setEnabled(true);
+        return;
     }
-    b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::FILE);
+    b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::FILE);
     if (!b)
     {
         m_pTextChat->Close(CONN_ERR);
         QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
+        ui->LIST_HOST->setEnabled(true);
         return;
     }
-    b = m_pTextChat->ConnectHost(QHostAddress (m_peerhost.address), TextChat::PICTURE);
+    b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::PICTURE);
     if (!b)
     {
        m_pTextChat->Close(CONN_ERR);
        QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
+       ui->LIST_HOST->setEnabled(true);
        return;
     }
 }
@@ -412,7 +416,7 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
         return;
     }
     fd->close();
-    qDebug() << fileNameList;
+    //qDebug() << fileNameList;
     QString html;
     foreach (QString path, fileNameList) {
        html += m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
