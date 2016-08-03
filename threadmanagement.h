@@ -147,15 +147,18 @@ void ThreadManagement<T>::run()
         {
 
         }
-        m_pClass = new T(tmp);
-        connect(m_pClass, SIGNAL(signal_peer_close()),
-                m_pobj, SLOT(slot_peer_close()));
-        if (dynamic_cast<TransferFile*>(m_pClass))
-            connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
-                    m_pobj, SLOT(slot_recv_file_success(QString)));
         else
-            connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
-                    m_pobj, SLOT(slot_recv_picture_success(QString)));
+        {
+            m_pClass = new T(tmp);
+            connect(m_pClass, SIGNAL(signal_peer_close()),
+                    m_pobj, SLOT(slot_peer_close()));
+            if (dynamic_cast<TransferFile*>(m_pClass))
+                connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
+                        m_pobj, SLOT(slot_recv_file_success(QString)));
+            else
+                connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
+                        m_pobj, SLOT(slot_recv_picture_success(QString)));
+        }
     }
     else
     {/* send */
@@ -184,6 +187,7 @@ void ThreadManagement<T>::run()
 template<class T>
 int ThreadManagement<T>::Append(const QString& filename)
 {
+
     qDebug() << "append";
     m_pMutex->lock();
     if (m_tasklist.size() > m_maxtask)

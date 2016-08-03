@@ -7,7 +7,7 @@ TransferFile::TransferFile(QTcpSocket*socket, QObject *parent)
         connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
 }
 
-/* 发送图片、文件 */
+/* 发送文件 */
 void TransferFile::Process(Source& source)
 {
     if (!m_pSocket)
@@ -34,20 +34,23 @@ void TransferFile::Process(Source& source)
         /* 非/二进制文件，故最好先utf8 */
         if (text.length() < 1024)
         {
-             ret = m_pSocket->write((base + ":"
-                                     + END.toUtf8().toBase64() + ":"
-                                     + text.toUtf8().toBase64() + ";").toLatin1());
-             break;
+            QString data(base + ':'
+                         + END.toUtf8().toBase64() + ':'
+                         + text.toUtf8().toBase64() + ';');
+            ret = m_pSocket->write(data.toLatin1());
+            break;
         }
         else
         {
-            ret = m_pSocket->write((base + ":" + text.toUtf8().toBase64() + ";").toLatin1());
+            QString data(base + ':' + text.toUtf8().toBase64() + ';');
+            ret = m_pSocket->write(data.toLatin1());
         }
         if (ret == -1)
         {
             emit this->signal_peer_close();
         }
     }
+
     file.close();
     if (ret == -1)
         emit this->signal_peer_close();

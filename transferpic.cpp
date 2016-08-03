@@ -8,7 +8,7 @@ TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
 }
 
 
-/* 发送图片、文件 */
+/* 发送图片 */
 void TransferPic::Process(Source& source)
 {
 
@@ -37,14 +37,16 @@ void TransferPic::Process(Source& source)
         /* 非/二进制文件，故最好先utf8 */
         if (text.length() < 1024)
         {
-             ret = m_pSocket->write((base + ":"
-                                    + END.toUtf8().toBase64() + ":"
-                                    + text.toUtf8().toBase64() + ";").toLatin1());
-             break;
+            QString data(base + ':'
+                         + END.toUtf8().toBase64() + ':'
+                         + text.toUtf8().toBase64() + ';');
+            ret = m_pSocket->write(data.toLatin1());
+            break;
         }
         else
         {
-            ret = m_pSocket->write((base + ":" + text.toUtf8().toBase64() + ";").toLatin1());
+            QString data(base + ':' + text.toUtf8().toBase64() + ';');
+            ret = m_pSocket->write(data.toLatin1());
         }
         if (ret == -1)
         {
@@ -52,14 +54,19 @@ void TransferPic::Process(Source& source)
         }
     }
     file.close();
-    qDebug() << "Send finished";
+
     if (ret == -1)
+    {
+        qDebug() << "send error";
         emit this->signal_peer_close();
+    }
+    qDebug() << "Send finished";
 }
 
 /* 接受图片 */
 void TransferPic::slot_recv_picture()
 {
+
     qDebug() << "recv picture";
     QString recv(m_pSocket->readAll());
     QList<QString> msgs = recv.split(";");
