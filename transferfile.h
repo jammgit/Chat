@@ -8,6 +8,7 @@
 #include <QPixmap>
 #include <QMap>
 #include <QBuffer>
+#include <QDateTime>
 #include <QByteArray>
 #include "msginfo.h"
 
@@ -54,7 +55,6 @@ private:
     QMap<QString, QString> m_files;
     /* 保存打开的文件描述符，<文件名，打开文件的描述符>*/
     QMap<QString, QFile*> m_openfiles;
-    QMap<QString, QFile*> m_openpics;
 };
 
 #endif // TRANSFERFILE_H

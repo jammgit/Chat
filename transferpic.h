@@ -9,6 +9,7 @@
 #include <QPixmap>
 #include <QMap>
 #include <QBuffer>
+#include <QDateTime>
 #include <QByteArray>
 #include "msginfo.h"
 
@@ -53,7 +54,6 @@ private:
     /* 用户发送，接受到的文件、图片列表记录<不包含路径文件名,完整路径名> */
     QMap<QString, QString> m_files;
     /* 保存打开的文件描述符，<文件名，打开文件的描述符>*/
-    QMap<QString, QFile*> m_openfiles;
     QMap<QString, QFile*> m_openpics;
 };
 

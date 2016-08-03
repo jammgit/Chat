@@ -33,7 +33,7 @@ public:
     /* 停止线程 */
     void stop();
     /* 添加任务 */
-    int Append(const QString& filename, const QString& transname, bool is = false);
+    int Append(const QString& filename);
     /* */
 
     T *GetClassPoniter()
@@ -161,7 +161,7 @@ void ThreadManagement<T>::run()
 
 /* 添加任务 */
 template<class T>
-int ThreadManagement<T>::Append(const QString& filename, const QString& transname, bool is)
+int ThreadManagement<T>::Append(const QString& filename)
 {
     qDebug() << "append";
     m_pMutex->lock();
@@ -172,8 +172,7 @@ int ThreadManagement<T>::Append(const QString& filename, const QString& transnam
     }
     Source s;
     s.filepath = filename;
-    s.transname = transname;
-    s.is = is;
+    //s.transname = transname;
     m_tasklist.push_back(s);
     m_pMutex->unlock();
     m_pSem->release();

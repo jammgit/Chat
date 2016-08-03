@@ -58,9 +58,6 @@ void TextChat::__Close_Socket()
         m_pPicMng = nullptr;
     }
     /* 清空列表 */
-    m_files.clear();
-    m_openfiles.clear();
-    m_openpics.clear();
     m_isConnect = false;
 }
 
@@ -103,10 +100,12 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
         if (!m_pFileMng)
         {
             m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                                m_peerhost);
+                                                                                QHostAddress(m_peerhost.address));
             m_pFileMng->start();
             connect(m_pFileMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
                     this, SLOT(slot_peer_close()));
+            connect(m_pFileMng->GetClassPoniter(), SIGNAL(signal_recv_file_success(QString)),
+                    this, SLOT(slot_recv_file_success(QString)));
 //            if (!b)
 //            {
 //                this->__Close_Socket();
@@ -119,11 +118,13 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
     case PICTURE:
         if (!m_pPicMng)
         {
-            m_pPicMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                                m_peerhost);
+            m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(m_pListen,
+                                                                               QHostAddress(m_peerhost.address));
             m_pPicMng->start();
             connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
                     this, SLOT(slot_peer_close()));
+            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_recv_picture_success(QString)),
+                    this, SLOT(slot_recv_picture_success(QString)));
 //            QTcpSocket* tmp = new QTcpSocket;
 //            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
 //            if (tmp->waitForConnected())
@@ -187,7 +188,6 @@ const QString TextChat::SendMsg(char msgtype, QString& text)
         qDebug() << "send before";
         qint64 ret=0;
         QString str_ret;
-        QString tmp;
         switch(msgtype)
         {
         case MSG_EMOJI: /* text is a path of *.gif */
@@ -211,52 +211,57 @@ const QString TextChat::SendMsg(char msgtype, QString& text)
             break;
 
         case MSG_FILE_INFO:     /* 相对、完整路径 */
-            tmp = text;
-            if (m_files.find(text.split("/").back()) != m_files.end())
-            {/* 如果存在同名文件,插入一个时间值做分辨 */
-                int idx = text.lastIndexOf(".");
-                text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
-            }
-            /* 添加记录 */
-            m_files[text.split("/").back()] = tmp;
+            m_pFileMng->Append(text);
+//            tmp = text;
+//            if (m_files.find(text.split("/").back()) != m_files.end())
+//            {/* 如果存在同名文件,插入一个时间值做分辨 */
+//                int idx = text.lastIndexOf(".");
+//                text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
+//            }
+//            /* 添加记录 */
+//            m_files[text.split("/").back()] = tmp;
 
-            ret = m_pTextConn->write(QString(MSG_FILE_INFO).toUtf8().toBase64() + ':'
-                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
-                                        + text.split("/").back().toUtf8().toBase64()+';');
+//            ret = m_pTextConn->write(QString(MSG_FILE_INFO).toUtf8().toBase64() + ':'
+//                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+//                                        + text.split("/").back().toUtf8().toBase64()+';');
+
             str_ret = TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
                     + "你发送了文件[" + text + "]" + TEXT_BACK;
             break;
 
-        case MSG_IMAGE_INFO:    /* 相对、完整路径(通知picture manage 发送缩略图) */
-            tmp = text;
-            if (m_files.find(text.split("/").back()) != m_files.end())
-            {/* 如果存在同名文件,插入一个时间值做分辨 */
-                int idx = text.lastIndexOf(".");
-                text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
-            }
-            qDebug() << text.split("/").back();
-            m_files[text.split("/").back()] = tmp;
-             /* 向线程添加任务 */
-            m_pPicMng->Append(tmp, text.split("/").back(), true);
+        case MSG_IMAGE_INFO:    /* 相对、完整路径 */
+            /* 向线程添加任务 */
+            m_pPicMng->Append(text);
+
+//            tmp = text;
+//            if (m_files.find(text.split("/").back()) != m_files.end())
+//            {/* 如果存在同名文件,插入一个时间值做分辨 */
+//                int idx = text.lastIndexOf(".");
+//                text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
+//            }
+//            qDebug() << text.split("/").back();
+//            m_files[text.split("/").back()] = tmp;
+
+
             str_ret = PIC_HTML_STRING.arg(RIGHT, text, QString::number(100),QString::number(200) );
             /* 添加记录 */
 
             break;
             /* 在combobox点击会选择此两种消息类型 */
-        case MSG_DOWNLOAD_FILE: /* text是纯文件名 */
-            ret = m_pTextConn->write(QString(MSG_DOWNLOAD_FILE).toUtf8().toBase64() + ':'
-                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
-                                        + text.toUtf8().toBase64()+';');
-            str_ret = TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_3, FONT_SIZE)
-                    + "开始下载文件["+ text + "]..." + TEXT_BACK;
-            break;
-        case MSG_DOWNLOAD_IMAGE:
-            ret = m_pTextConn->write(QString(MSG_DOWNLOAD_FILE).toUtf8().toBase64() + ':'
-                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
-                                        + text.toUtf8().toBase64()+';');
-            str_ret = TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_3, FONT_SIZE)
-                    + "开始下载图片["+ text + "]..." + TEXT_BACK;
-            break;
+//        case MSG_DOWNLOAD_FILE: /* text是纯文件名 */
+//            ret = m_pTextConn->write(QString(MSG_DOWNLOAD_FILE).toUtf8().toBase64() + ':'
+//                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+//                                        + text.toUtf8().toBase64()+';');
+//            str_ret = TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_3, FONT_SIZE)
+//                    + "开始下载文件["+ text + "]..." + TEXT_BACK;
+//            break;
+//        case MSG_DOWNLOAD_IMAGE:
+//            ret = m_pTextConn->write(QString(MSG_DOWNLOAD_FILE).toUtf8().toBase64() + ':'
+//                                        + QDateTime::currentDateTime().toString().toUtf8().toBase64()+':'
+//                                        + text.toUtf8().toBase64()+';');
+//            str_ret = TEXT_FRONT.arg(LEFT, FONT, TEXT_COLOR_3, FONT_SIZE)
+//                    + "开始下载图片["+ text + "]..." + TEXT_BACK;
+//            break;
         default:
             break;
         }
@@ -296,7 +301,7 @@ void TextChat::slot_is_accept()
     else if (!m_pFileMng)
     {/* */
         m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                            m_peerhost);
+                                                                            QHostAddress(m_peerhost.address));
         m_pFileMng->start();
 //        bool b = m_pFileMng->CreateSocket(m_pListen);
 //        if (!b)
@@ -307,8 +312,8 @@ void TextChat::slot_is_accept()
     }
     else if (!m_pPicMng)
     {
-        m_pPicMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                            m_peerhost);
+        m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(m_pListen,
+                                                                           QHostAddress(m_peerhost.address));
 //        bool b = m_pFileMng->CreateSocket(m_pListen);
 //        if (!b)
 //        {
@@ -434,17 +439,17 @@ void TextChat::slot_recv_msg()
                     case MSG_TEXT :
                         textlist.push_back(text);
                         break;
-                    case MSG_FILE_INFO:
-                        textlist.push_back(TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
-                                           + "对方发送了文件[" + text + "]" + TEXT_BACK);
-                        emit this->signal_recv_file_info(text);
-                        break;
-                    case MSG_DOWNLOAD_FILE: /* 此时text为加上了时间戳的文件名 */
-                        m_pFileMng->Append(m_files[text], text);
-                        break;
-                    case MSG_DOWNLOAD_IMAGE:/* 此时text为加上了时间戳的文件名 */
-                        m_pPicMng->Append(m_files[text], text);
-                        break;
+//                    case MSG_FILE_INFO:
+//                        textlist.push_back(TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
+//                                           + "对方发送了文件[" + text + "]" + TEXT_BACK);
+//                        emit this->signal_recv_file_info(text);
+//                        break;
+//                    case MSG_DOWNLOAD_FILE: /* 此时text为加上了时间戳的文件名 */
+//                        m_pFileMng->Append(m_files[text], text);
+//                        break;
+//                    case MSG_DOWNLOAD_IMAGE:/* 此时text为加上了时间戳的文件名 */
+//                        m_pPicMng->Append(m_files[text], text);
+//                        break;
                     default:
                         qDebug() << "default";
                         break;
@@ -462,6 +467,15 @@ void TextChat::slot_peer_close()
 {
     this->__Close_Socket();
     emit this->signal_peer_close();
+}
+
+void TextChat::slot_recv_file_success(const QString& file)
+{
+    emit this->signal_recv_file_success(file);
+}
+void TextChat::slot_recv_picture_success(const QString& file)
+{
+    emit this->signal_recv_picture_success(file);
 }
 
 

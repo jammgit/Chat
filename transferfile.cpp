@@ -10,6 +10,17 @@ void TransferFile::Process(Source& source)
 {
     if (!m_pSocket)
         return;
+    /* */
+    QString text = source.filepath;
+    if (m_files.find(text.split("/").back()) != m_files.end())
+    {/* 如果存在同名文件,插入一个时间值做分辨 */
+        int idx = text.lastIndexOf(".");
+        text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
+    }
+    source.transname = text;
+    qDebug() << text.split("/").back();
+    /* save */
+    m_files[text.split("/").back()] = source.filepath;
 
     QString base = source.transname.toUtf8().toBase64();
     QFile file(source.filepath);

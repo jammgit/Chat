@@ -14,15 +14,18 @@ void TransferPic::Process(Source& source)
     if (!m_pSocket)
         return;
 
-//    if (source.is)
-//    {
-//        /* 发送缩略图 */
-//        QImage image(source.filepath);
-//        qDebug() << image.byteCount();
-//        QImage image1 = image.scaled(200,image.height()/(image.width()/200));
-//        qDebug() << image1.byteCount();
-//        image1.save(source.filepath = QString("./tmp/%1").arg(source.filepath.split("/").back()));
-//    }
+    /* */
+    QString text = source.filepath;
+    if (m_files.find(text.split("/").back()) != m_files.end())
+    {/* 如果存在同名文件,插入一个时间值做分辨 */
+        int idx = text.lastIndexOf(".");
+        text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
+    }
+    source.transname = text;
+    qDebug() << text.split("/").back();
+    /* save */
+    m_files[text.split("/").back()] = source.filepath;
+
     QString base = source.transname.toUtf8().toBase64();
     QFile file(source.filepath);
     file.open(QFile::ReadOnly);
@@ -57,7 +60,7 @@ void TransferPic::Process(Source& source)
 void TransferPic::slot_recv_picture()
 {
     qDebug() << "recv picture";
-    QString recv(m_pPicMng->GetClassPoniter()->GetSocket()->readAll());
+    QString recv(m_pSocket->readAll());
     QList<QString> msgs = recv.split(";");
     msgs.pop_back();
 

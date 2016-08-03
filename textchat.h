@@ -76,13 +76,13 @@ signals:
     void signal_shake_window();
 
     /* */
-    void signal_recv_picture_info(const QString& info);
-    void signal_recv_file_info(const QString& info);
+    void signal_recv_picture_success(const QString& info);
+    void signal_recv_file_success(const QString& info);
 
 
 
 
-private slots:
+public slots:
     /* connect成功,那么建立readyread，否则error()被发送 */
     void slot_connect_success();
     /* 请求失败时，error()信号的槽函数 */
@@ -94,6 +94,8 @@ private slots:
     /* 转发来自传输图片、文件类的信号 */
     void slot_peer_close();
 
+    void slot_recv_file_success(const QString& file);
+    void slot_recv_picture_success(const QString& file);
 
 
 private:

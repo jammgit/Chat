@@ -7,7 +7,6 @@ typedef struct
 {
     QString filepath;            //文件路径
     QString transname;           //传输时的文件名，针对传输同名文件的情况
-    bool is;                     //判断是否是发送缩略图，对文件类无效
 }Source;
 
 #define PICTURE_NAME_FILTER "Image Files(*.png *.jpg)"

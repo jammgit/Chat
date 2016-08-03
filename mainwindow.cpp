@@ -173,14 +173,16 @@ void MainWindow::__Init()
     connect(m_pTextChat, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
     connect(m_pTextChat, SIGNAL(signal_send_error()), this, SLOT(slot_send_error()));
     connect(m_pTextChat, SIGNAL(signal_shake_window()), this, SLOT(slot_shake_window()));
+
     connect(m_pTextChat, SIGNAL(signal_recv_file_success(const QString&)),
             this, SLOT(slot_recv_file_success(const QString&)));
     connect(m_pTextChat, SIGNAL(signal_recv_picture_success(const QString&)),
             this, SLOT(slot_recv_picture_success(const QString&)));
-    connect(m_pTextChat, SIGNAL(signal_recv_file_info(QString)),
-            this, SLOT(slot_recv_file_info(QString)));
-    connect(m_pTextChat, SIGNAL(signal_recv_picture_info(QString)),
-            this, SLOT(slot_recv_picture_info(QString)));
+
+//    connect(m_pTextChat, SIGNAL(signal_recv_file_info(QString)),
+//            this, SLOT(slot_recv_file_info(QString)));
+//    connect(m_pTextChat, SIGNAL(signal_recv_picture_info(QString)),
+//            this, SLOT(slot_recv_picture_info(QString)));
 }
 
 
@@ -469,25 +471,25 @@ void MainWindow::on_BTN_FILE_clicked()
 /* 提示是否下载文件 */
 void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
 {
-    QMessageBox::StandardButton b = QMessageBox::information(this, "下载",
-                                                             QString("确定下载[%1]吗？").arg(arg1),
-                                                             QMessageBox::StandardButton::Yes
-                                                             | QMessageBox::StandardButton::No);
-    if (b == QMessageBox::StandardButton::Yes)
-    {
-        QString tmp = arg1;
-        int idx = arg1.lastIndexOf(".");
-        if (arg1[idx+1] == 'p' || arg1[idx+1] == 'P'
-                || arg1[idx+1] == 'j' || arg1[idx+1] == 'J')
-        {
+//    QMessageBox::StandardButton b = QMessageBox::information(this, "下载",
+//                                                             QString("确定下载[%1]吗？").arg(arg1),
+//                                                             QMessageBox::StandardButton::Yes
+//                                                             | QMessageBox::StandardButton::No);
+//    if (b == QMessageBox::StandardButton::Yes)
+//    {
+//        QString tmp = arg1;
+//        int idx = arg1.lastIndexOf(".");
+//        if (arg1[idx+1] == 'p' || arg1[idx+1] == 'P'
+//                || arg1[idx+1] == 'j' || arg1[idx+1] == 'J')
+//        {
 
-            m_pTextChat->SendMsg(MSG_DOWNLOAD_IMAGE, tmp);
-        }
-        else
-        {
-            m_pTextChat->SendMsg(MSG_DOWNLOAD_FILE, tmp);
-        }
-    }
+//            m_pTextChat->SendMsg(MSG_DOWNLOAD_IMAGE, tmp);
+//        }
+//        else
+//        {
+//            m_pTextChat->SendMsg(MSG_DOWNLOAD_FILE, tmp);
+//        }
+//    }
 }
 
 /* 打开文件位置窗口 */
@@ -751,68 +753,65 @@ void MainWindow::slot_shake_window()
 /* 1.未下载下拉框 删除未下载文件2.已下载下拉框 添加下载完成的文件*/
 void MainWindow::slot_recv_file_success(const QString &file)
 {
-    int count = ui->COMBO_DOWN_FILE_LIST->count();
-    for (int i = 0; i < count; ++i)
-    {
-        QString name = ui->COMBO_DOWN_FILE_LIST->itemText(i);
-        if (name == file)
-        {
-            ui->COMBO_DOWN_FILE_LIST->removeItem(i);
-            ui->COMBO_HAD_DOWN_FILE_LIST->addItem(file);
-            break;
-        }
-    }
+    ui->COMBO_DOWN_FILE_LIST->addItem(file);
+
     /* 消息框提示下载完成 */
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
-                + TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
+                + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
                 + "文件["+ file +"]"+"下载完成" + TEXT_BACK);
 }
 
 void MainWindow::slot_recv_picture_success(const QString &file)
 {
-    /* 判断是否是缩略图进行不同操作 */
-    bool b = false;
-    int count = ui->COMBO_DOWN_FILE_LIST->count();
-    int i;
-    for (i = 0; i < count; ++i)
-    {
-        QString name = ui->COMBO_DOWN_FILE_LIST->itemText(i);
-        if (name == file)
-        {
-            b = true;
-            break;
-        }
-    }
-    if (b)
-    {/* 是缩略图 */
-        ui->COMBO_DOWN_FILE_LIST->addItem(file);
-        ui->TEXT_MSG_RECORD->setHtml(
-                    ui->TEXT_MSG_RECORD->toHtml()
-                    + PIC_HTML_STRING.arg(LEFT, QString("./tmp/")+file,
-                                          QString::number(200), QString::number(100)));
-    }
-    else
-    {/* 不是缩略图 */
-        ui->COMBO_DOWN_FILE_LIST->removeItem(i);
-        ui->COMBO_HAD_DOWN_FILE_LIST->addItem(file);
-        /* 消息框提示下载完成 */
-        ui->TEXT_MSG_RECORD->setHtml(
-                    ui->TEXT_MSG_RECORD->toHtml()
-                    + TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
-                    + "图片["+ file +"]"+"下载完成" + TEXT_BACK);
-    }
-}
-
-void MainWindow::slot_recv_file_info(const QString &file)
-{
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
+    /* 消息框提示下载完成 */
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + PIC_HTML_STRING.arg(LEFT, QString("./tmp/%1").arg(file),
+                                      QString::number(100),QString::number(200)));
+    /* 判断是否是缩略图进行不同操作 */
+//    bool b = false;
+//    int count = ui->COMBO_DOWN_FILE_LIST->count();
+//    int i;
+//    for (i = 0; i < count; ++i)
+//    {
+//        QString name = ui->COMBO_DOWN_FILE_LIST->itemText(i);
+//        if (name == file)
+//        {
+//            b = true;
+//            break;
+//        }
+//    }
+//    if (b)
+//    {/* 是缩略图 */
+//        ui->COMBO_DOWN_FILE_LIST->addItem(file);
+//        ui->TEXT_MSG_RECORD->setHtml(
+//                    ui->TEXT_MSG_RECORD->toHtml()
+//                    + PIC_HTML_STRING.arg(LEFT, QString("./tmp/")+file,
+//                                          QString::number(200), QString::number(100)));
+//    }
+//    else
+//    {/* 不是缩略图 */
+//        ui->COMBO_DOWN_FILE_LIST->removeItem(i);
+//        ui->COMBO_HAD_DOWN_FILE_LIST->addItem(file);
+//        /* 消息框提示下载完成 */
+//        ui->TEXT_MSG_RECORD->setHtml(
+//                    ui->TEXT_MSG_RECORD->toHtml()
+//                    + TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
+//                    + "图片["+ file +"]"+"下载完成" + TEXT_BACK);
+//    }
 }
 
-void MainWindow::slot_recv_picture_info(const QString &file)
-{
+//void MainWindow::slot_recv_file_info(const QString &file)
+//{
+//    ui->COMBO_DOWN_FILE_LIST->addItem(file);
+//}
 
-}
+//void MainWindow::slot_recv_picture_info(const QString &file)
+//{
+
+//}
 
 
 

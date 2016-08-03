@@ -102,8 +102,8 @@ public slots: /* --------------文本消息槽函数---------------- */
 
     void slot_shake_window();
 
-    void slot_recv_picture_info(const QString& file);
-    void slot_recv_file_info(const QString& file);
+//    void slot_recv_picture_info(const QString& file);
+//    void slot_recv_file_info(const QString& file);
     void slot_recv_file_success(const QString& file);
     void slot_recv_picture_success(const QString& file);
 
