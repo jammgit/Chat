@@ -28,28 +28,37 @@ class ThreadManagement : public QThread
     /* 运行线程 */
     void run();
 public:
-    static ThreadManagement<T>* CreateThreadManagement(
-            QTcpServer*socket,const QHostAddress& addr,
-            QObject* up, int maxqueue = 128);
+    static ThreadManagement<T>* CreateThreadManagement(QObject* up, int maxqueue = 128);
 
     /* 停止线程 */
     void stop();
     /* 添加任务 */
     int Append(const QString& filename);
     /* */
-
-    T *GetClassPoniter()
+    void SetSocket(QTcpSocket* socket)
     {
-        return m_pClass;
+        m_pClass = new T(socket);
+        connect(m_pClass, SIGNAL(signal_peer_close()),
+                m_pobj, SLOT(slot_peer_close()));
+        if (dynamic_cast<TransferFile*>(m_pClass))
+            connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
+                    m_pobj, SLOT(slot_recv_file_success(QString)));
+        else
+            connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
+                    m_pobj, SLOT(slot_recv_picture_success(QString)));
     }
+
+//    T *GetClassPoniter()
+//    {
+//        return m_pClass;
+//    }
 
     ~ThreadManagement();
 private:
-    explicit ThreadManagement(QTcpServer*socket, const QHostAddress& addr,
-                              QObject* up,
-                              int maxqueue = 128, QObject *parent = 0);
-    /* */
-    bool ConnectHost();
+    explicit ThreadManagement(QObject* up,int maxqueue = 128, QObject *parent = 0);
+//    /* */
+//    bool ConnectHost();
+
 
 signals:
 
@@ -71,21 +80,16 @@ private:
     /* 设定的任务数量最大值 */
     int m_maxtask;
     /* */
-    QTcpServer *m_pListen;
-    /* */
-    QHostAddress m_peer_addr;
-    /* */
     QObject *m_pobj;
 };
 
 
 template<class T>
-ThreadManagement<T>::ThreadManagement(QTcpServer*socket,const QHostAddress&addr, QObject* up,int maxqueue, QObject *parent)
+ThreadManagement<T>::ThreadManagement(QObject* up,int maxqueue, QObject *parent)
     : QThread(parent),m_pClass(nullptr),m_pMutex(new QMutex),m_pSem(new QSemaphore)
-    ,m_pListen(socket),m_pobj(up)
+    ,m_pobj(up)
 {
     m_maxtask = maxqueue;
-    m_peer_addr = addr;
     m_stop = false;
 }
 
@@ -99,75 +103,74 @@ ThreadManagement<T>::~ThreadManagement()
 
 /* 创建线程 */
 template<class T>
-ThreadManagement<T>* ThreadManagement<T>::CreateThreadManagement(
-        QTcpServer*socket,const QHostAddress& addr, QObject* up,int maxqueue)
+ThreadManagement<T>* ThreadManagement<T>::CreateThreadManagement(QObject* up,int maxqueue)
 {
     if (maxqueue > MAX_TASK_NUM)
         return nullptr;
-    return new ThreadManagement<T>(socket, addr, up, maxqueue);
+    return new ThreadManagement<T>(up, maxqueue);
 }
 
 
 
-template<class T>
-bool ThreadManagement<T>::ConnectHost()
-{
-    QTcpSocket *tmp = new QTcpSocket;
-    tmp->connectToHost(m_peer_addr, TEXTCHAT_SERVER_PORT);
-    if (tmp->waitForConnected())
-    {
-        qDebug() << "TextChat connected";
-        m_pClass = new T(tmp);
-        connect(m_pClass, SIGNAL(signal_peer_close()),
-                m_pobj, SLOT(slot_peer_close()));
-        if (dynamic_cast<TransferFile*>(m_pClass))
-            connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
-                    m_pobj, SLOT(slot_recv_file_success(QString)));
-        else
-            connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
-                    m_pobj, SLOT(slot_recv_picture_success(QString)));
-        return true;
-    }
-    else
-    {
-        qDebug() << "TextChat connect failed";
-        delete tmp;
-        return false;
-    }
-}
+//template<class T>
+//bool ThreadManagement<T>::ConnectHost()
+//{
+//    QTcpSocket *tmp = new QTcpSocket;
+//    tmp->connectToHost(m_peer_addr, TEXTCHAT_SERVER_PORT);
+//    if (tmp->waitForConnected())
+//    {
+//        qDebug() << "TextChat connected";
+//        m_pClass = new T(tmp);
+//        connect(m_pClass, SIGNAL(signal_peer_close()),
+//                m_pobj, SLOT(slot_peer_close()));
+//        if (dynamic_cast<TransferFile*>(m_pClass))
+//            connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
+//                    m_pobj, SLOT(slot_recv_file_success(QString)));
+//        else
+//            connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
+//                    m_pobj, SLOT(slot_recv_picture_success(QString)));
+//        return true;
+//    }
+//    else
+//    {
+//        qDebug() << "TextChat connect failed";
+//        delete tmp;
+//        return false;
+//    }
+//}
 
 /* 运行线程 */
 template<class T>
 void ThreadManagement<T>::run()
 {
-    if (m_pListen->hasPendingConnections())
-    {/* recv */
-        QTcpSocket *tmp = m_pListen->nextPendingConnection();
-        if (!tmp)
-        {
+//    if (m_pListen->hasPendingConnections())
+//    {/* recv */
+//        QTcpSocket *tmp = m_pListen->nextPendingConnection();
+//        if (!tmp)
+//        {
 
-        }
-        else
-        {
-            m_pClass = new T(tmp);
-            connect(m_pClass, SIGNAL(signal_peer_close()),
-                    m_pobj, SLOT(slot_peer_close()));
-            if (dynamic_cast<TransferFile*>(m_pClass))
-                connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
-                        m_pobj, SLOT(slot_recv_file_success(QString)));
-            else
-                connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
-                        m_pobj, SLOT(slot_recv_picture_success(QString)));
-        }
-    }
-    else
-    {/* send */
-        bool tmp = this->ConnectHost();
-        if (!tmp)
-        {
+//        }
+//        else
+//        {
+//            m_pClass = new T(tmp);
+//            connect(m_pClass, SIGNAL(signal_peer_close()),
+//                    m_pobj, SLOT(slot_peer_close()));
+//            if (dynamic_cast<TransferFile*>(m_pClass))
+//                connect(m_pClass, SIGNAL(signal_recv_file_success(QString)),
+//                        m_pobj, SLOT(slot_recv_file_success(QString)));
+//            else
+//                connect(m_pClass, SIGNAL(signal_recv_picture_success(QString)),
+//                        m_pobj, SLOT(slot_recv_picture_success(QString)));
+//        }
+//    }
+//    else
+//    {/* send */
+//        bool tmp = this->ConnectHost();
+//        if (!tmp)
+//        {
 
-        }
-    }
+//        }
+//    }
     //QMessageBox::information(nullptr, "sada", "sadas");
     while (!m_stop)
     {

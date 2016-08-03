@@ -99,9 +99,24 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
     case FILE:
         if (!m_pFileMng)
         {
-            m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                                QHostAddress(m_peerhost.address),
-                                                                                this);
+            m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(this);
+            QTcpSocket *tmp = new QTcpSocket;
+            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+            if (tmp->waitForConnected())
+            {
+                qDebug() << "TextChat connected";
+                tmp->setParent(nullptr);
+                tmp->moveToThread(m_pFileMng);
+                m_pFileMng->SetSocket(tmp);
+            }
+            else
+            {
+                qDebug() << "TextChat connect failed";
+                delete tmp;
+                this->__Close_Socket();
+                return false;
+            }
+
             m_pFileMng->start();
 
 
@@ -118,10 +133,23 @@ bool TextChat::ConnectHost(const QHostAddress &addr, enum CONN_TYPE type)
     case PICTURE:
         if (!m_pPicMng)
         {
-            m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(m_pListen,
-                                                                              QHostAddress(m_peerhost.address),
-                                                                              this);
-
+            m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(this);
+            QTcpSocket *tmp = new QTcpSocket;
+            tmp->connectToHost(addr, TEXTCHAT_SERVER_PORT);
+            if (tmp->waitForConnected())
+            {
+                qDebug() << "TextChat connected";
+                tmp->setParent(nullptr);
+                tmp->moveToThread(m_pPicMng);
+                m_pPicMng->SetSocket(tmp);
+            }
+            else
+            {
+                qDebug() << "TextChat connect failed";
+                delete tmp;
+                this->__Close_Socket();
+                return false;
+            }
 //            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_peer_close()),
 //                    this, SLOT(slot_peer_close()));
 //            connect(m_pPicMng->GetClassPoniter(), SIGNAL(signal_recv_picture_success(QString)),
@@ -303,9 +331,22 @@ void TextChat::slot_is_accept()
     }
     else if (!m_pFileMng)
     {/* */
-        m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(m_pListen,
-                                                                            QHostAddress(m_peerhost.address),
-                                                                            this);
+        m_pFileMng = ThreadManagement<TransferFile>::CreateThreadManagement(this);
+
+        if (m_pListen->hasPendingConnections())
+        {/* recv */
+            QTcpSocket *tmp = m_pListen->nextPendingConnection();
+            if (!tmp)
+            {
+            }
+            else
+            {
+                tmp->setParent(nullptr);
+                tmp->moveToThread(m_pFileMng);
+                m_pFileMng->SetSocket(tmp);
+            }
+        }
+
         m_pFileMng->start();
 //        bool b = m_pFileMng->CreateSocket(m_pListen);
 //        if (!b)
@@ -316,9 +357,20 @@ void TextChat::slot_is_accept()
     }
     else if (!m_pPicMng)
     {
-        m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(m_pListen,
-                                                                          QHostAddress(m_peerhost.address),
-                                                                          this);
+        m_pPicMng = ThreadManagement<TransferPic>::CreateThreadManagement(this);
+        if (m_pListen->hasPendingConnections())
+        {/* recv */
+            QTcpSocket *tmp = m_pListen->nextPendingConnection();
+            if (!tmp)
+            {
+            }
+            else
+            {
+                tmp->setParent(nullptr);
+                tmp->moveToThread(m_pPicMng);
+                m_pPicMng->SetSocket(tmp);
+            }
+        }
 //        bool b = m_pFileMng->CreateSocket(m_pListen);
 //        if (!b)
 //        {
