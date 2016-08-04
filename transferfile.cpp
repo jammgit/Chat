@@ -21,6 +21,7 @@ void TransferFile::slot_create_socket(const QHostAddress& addr)
 
 void TransferFile::slot_get_listen_socket()
 {
+    qDebug() << "get listen socket";
     m_is_get_socket_from_listen = true;
     m_pForBlock->release();
 }
@@ -39,7 +40,8 @@ void TransferFile::run()
         QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
         exit(0);
     }
-    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()));
+    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
+            Qt::DirectConnection);
     /* block */
     while (true)
     {
@@ -48,26 +50,31 @@ void TransferFile::run()
 
         if (m_is_get_socket_from_listen)
         {
+            qDebug() << "is true";
             if (m_pListen->hasPendingConnections())
             {
-                m_pSocket = m_pListen->nextPendingConnection();
+                QTcpSocket *m_pSocket = m_pListen->nextPendingConnection();
                 if (!m_pSocket)
                 {
 
                 }
                 else
                 {
-                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+                    qDebug() << "get connection";
+                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
+                            Qt::DirectConnection);
                 }
             }
         }
         else
         {
+            qDebug() << "connect so";
             m_pSocket = new QTcpSocket;
             m_pSocket->connectToHost(m_addr, FILE_SERVER_PORT);
             if (m_pSocket->waitForConnected())
             {
-                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
+                        Qt::DirectConnection);
             }
             else
             {
@@ -81,8 +88,7 @@ void TransferFile::run()
             m_thread_is_in_acquire = true;
             m_pSem->acquire();
             m_thread_is_in_acquire = false;
-            qDebug() << "Process one picture";
-            //m_pMutex->lock();
+            qDebug() << "Process one file";
             if (m_pMutex->tryLock(1000))           // just wait 3 seconds(for close session)
             {
                 Source file = m_tasklist.front();
@@ -167,6 +173,8 @@ void TransferFile::Process(Source& source)
             QString data(base + ':' + text.toUtf8().toBase64() + ';');
             ret = m_pSocket->write(data.toLatin1());
             qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
+            qDebug() << m_pSocket->error();
+            qDebug() << m_pSocket->errorString();
         }
         if (ret == -1)
         {

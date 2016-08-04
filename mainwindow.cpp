@@ -557,10 +557,10 @@ void MainWindow::on_BTN_SHAKE_clicked()
 /* 对端关闭连接 */
 void MainWindow::slot_peer_close()
 {
+    m_pPicChat->stop();
+    m_pFileChat->stop();
     QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
-    qDebug() << "?";
     this->__Set_Session(false);
-    qDebug() << "??";
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
 }

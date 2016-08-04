@@ -19,6 +19,7 @@ void TransferPic::slot_create_socket(const QHostAddress& addr)
 
 void TransferPic::slot_get_listen_socket()
 {
+    qDebug() << "get listen socket";
     m_is_get_socket_from_listen = true;
     m_pForBlock->release();
 }
@@ -37,7 +38,8 @@ void TransferPic::run()
         QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
         exit(0);
     }
-    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()));
+    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
+            Qt::DirectConnection);
     /* block */
     while (true)
     {
@@ -45,6 +47,7 @@ void TransferPic::run()
         m_pForBlock->acquire();
         if (m_is_get_socket_from_listen)
         {
+            qDebug() << "is true";
             if (m_pListen->hasPendingConnections())
             {
                 m_pSocket = m_pListen->nextPendingConnection();
@@ -54,17 +57,21 @@ void TransferPic::run()
                 }
                 else
                 {
-                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+                    qDebug() << "get connection";
+                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
+                            Qt::DirectConnection);
                 }
             }
         }
         else
         {
+            qDebug() << "connect so";
             m_pSocket = new QTcpSocket;
             m_pSocket->connectToHost(m_addr, PICTURE_SERVER_PORT);
             if (m_pSocket->waitForConnected())
             {
-                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
+                        Qt::DirectConnection);
             }
             else
             {
@@ -160,8 +167,9 @@ void TransferPic::Process(Source& source)
                          + END.toUtf8().toBase64() + ':'
                          + text.toUtf8().toBase64() + ';');
             ret = m_pSocket->write(data.toLatin1());
-            qDebug() << m_pSocket->error();
             qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
+            qDebug() << m_pSocket->error();
+            qDebug() << m_pSocket->errorString();
             break;
         }
         else
@@ -169,6 +177,8 @@ void TransferPic::Process(Source& source)
             QString data(base + ':' + text.toUtf8().toBase64() + ';');
             ret = m_pSocket->write(data.toLatin1());
             qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
+            qDebug() << m_pSocket->error();
+            qDebug() << m_pSocket->errorString();
         }
         if (ret == -1)
         {
