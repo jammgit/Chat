@@ -10,10 +10,7 @@ TransferFile::TransferFile(QObject* pwin, QObject *parent)
                 slot_recv_file_success(QString)));
 
     connect(this, SIGNAL(signal_peer_close()), pwin, SLOT(slot_peer_close()));
-    connect(this, SIGNAL(signal_process()), this, SLOT(slot_process()),
-            Qt::QueuedConnection);
-    connect(this, SIGNAL(signal_stop()), this, SLOT(slot_stop()),
-            Qt::QueuedConnection);
+
 }
 
 void TransferFile::slot_create_socket(const QHostAddress& addr)
@@ -67,6 +64,13 @@ void TransferFile::run()
     }
     connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
             Qt::DirectConnection);
+    connect(this, SIGNAL(signal_process()), this, SLOT(slot_process()),
+            Qt::QueuedConnection);
+    connect(this, SIGNAL(signal_stop()), this, SLOT(slot_stop()),
+            Qt::QueuedConnection);
+    connect(m_pWin, SIGNAL(signal_create_socket(const QHostAddress&)),
+            this, SLOT(slot_create_socket(const QHostAddress&)),
+            Qt::QueuedConnection);
 
     this->exec();
 }
