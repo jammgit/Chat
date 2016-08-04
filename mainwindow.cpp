@@ -13,10 +13,8 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
-    delete m_pVideo;
     delete m_pTextChat;
     delete m_pFindTerminal;
-    delete m_pTimer;
     delete m_pShowTimer;
 }
 
@@ -151,16 +149,22 @@ void MainWindow::__Init()
     connect(m_pShowTimer, SIGNAL(timeout()), this, SLOT(slot_show_time()));
     m_is_show_time = true;
 
-    /* 没两秒提升video窗口，暂时没其他办法 */
-    m_pTimer = new QTimer;
-    connect(m_pTimer, SIGNAL(timeout()), this, SLOT(slot_raise_video()));
-    m_pTimer->start(1000);
-    /* 初始化 视频、多播、文本聊天接口 */
-    m_pVideo = new VideoDisplay();
+
+    /* 初始化多播、文本聊天接口 */
     m_pFindTerminal = new FindTerminal;
     m_pFindTerminal->AddBrowser(ui->LIST_HOST);
     m_pTextChat = new TextChat;
     m_pTextChat->SetFindTerminal(m_pFindTerminal);
+
+    m_pFileChat = new TransferFile(this);
+    m_pFileChat->start();
+    m_pPicChat = new TransferPic(this);
+    m_pPicChat->start();
+
+    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
+            m_pFileChat, SLOT(slot_create_socket(const QHostAddress&)));
+    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
+            m_pPicChat, SLOT(slot_create_socket(const QHostAddress&)));
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
@@ -173,17 +177,7 @@ void MainWindow::__Init()
     connect(m_pTextChat, SIGNAL(signal_send_error()), this, SLOT(slot_send_error()));
     connect(m_pTextChat, SIGNAL(signal_shake_window()), this, SLOT(slot_shake_window()));
 
-    connect(m_pTextChat, SIGNAL(signal_recv_file_success(const QString&)),
-            this, SLOT(slot_recv_file_success(const QString&)));
-    connect(m_pTextChat, SIGNAL(signal_recv_picture_success(const QString&)),
-            this, SLOT(slot_recv_picture_success(const QString&)));
-
-//    connect(m_pTextChat, SIGNAL(signal_recv_file_info(QString)),
-//            this, SLOT(slot_recv_file_info(QString)));
-//    connect(m_pTextChat, SIGNAL(signal_recv_picture_info(QString)),
-//            this, SLOT(slot_recv_picture_info(QString)));
 }
-
 
 /* 设置聊天环境 */
 void MainWindow::__Set_Session(bool yes)
@@ -222,13 +216,9 @@ void MainWindow::__Set_Session(bool yes)
 /* 窗口移动 */
 void MainWindow::mousePressEvent(QMouseEvent *event)
 {
-    m_pVideo->GetViewfinder()->raise();
     if (event->button() == Qt::LeftButton)
     {
         m_position = event->globalPos() - frameGeometry().topLeft();
-        /* 视频窗口移动 */
-        if (m_pVideo)
-            m_pVideo->SetPosition(event->globalPos() - m_pVideo->GetViewfinder()->frameGeometry().topLeft());
         event->accept();
     }
 }
@@ -239,9 +229,6 @@ void MainWindow::mouseMoveEvent(QMouseEvent *event)
     if (event->buttons() & Qt::LeftButton)
     {
         move(event->globalPos() - m_position);
-        /* 视频窗口移动 */
-        if (m_pVideo)
-            m_pVideo->MoveWindow(event->globalPos());
         event->accept();
     }
 }
@@ -266,7 +253,6 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *e)
     }
     return false;
 }
-
 
 /* 画阴影 */
 void MainWindow::paintEvent(QPaintEvent *event)
@@ -326,30 +312,18 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     }
     ip[iplen] = '\0';
     qDebug() << QString(ip);
+    /* create file , picture socket */
+    emit this->signal_create_socket(QHostAddress(QString(ip)));
+
     /* 建立三个必须的连接连接 */
-    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::TEXT);
+    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
     if (!b)
     {
         QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
         ui->LIST_HOST->setEnabled(true);
         return;
     }
-    b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::FILE);
-    if (!b)
-    {
-        m_pTextChat->Close(CONN_ERR);
-        QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
-        ui->LIST_HOST->setEnabled(true);
-        return;
-    }
-    b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)), TextChat::PICTURE);
-    if (!b)
-    {
-       m_pTextChat->Close(CONN_ERR);
-       QMessageBox::information(nullptr,"网络错误","建立网络连接错误，请刷新重试");
-       ui->LIST_HOST->setEnabled(true);
-       return;
-    }
+
 }
 
 /* 发送文本消息,每10秒以上间隔才显示一次时间 */
@@ -383,6 +357,8 @@ void MainWindow::on_BTN_SEND_clicked()
 void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 {
     m_pTextChat->Close();
+    m_pFileChat->stop();
+    m_pPicChat->stop();
 
     QMessageBox::information(this, "提示", "聊天结束");
     this->__Set_Session(false);
@@ -417,17 +393,18 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
         return;
     }
     fd->close();
-    //qDebug() << fileNameList;
-    QString html;
+    qDebug() << fileNameList;
+//    QString html;
     foreach (QString path, fileNameList) {
-       html += m_pTextChat->SendMsg(MSG_IMAGE_INFO, path);
+       m_pPicChat->Append(path);
     }
-    ui->TEXT_MSG_RECORD->setHtml(
-                ui->TEXT_MSG_RECORD->toHtml()
-                + html);
+//    ui->TEXT_MSG_RECORD->setHtml(
+//                ui->TEXT_MSG_RECORD->toHtml()
+//                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
+
 
 void MainWindow::on_BTN_FILE_clicked()
 {
@@ -456,43 +433,19 @@ void MainWindow::on_BTN_FILE_clicked()
     }
     fd->close();
     qDebug() << fileNameList;
-    QString html;
+
     foreach (QString path, fileNameList) {
-       html += m_pTextChat->SendMsg(MSG_FILE_INFO, path);
+       m_pFileChat->Append(path);
     }
-    ui->TEXT_MSG_RECORD->setHtml(
-                ui->TEXT_MSG_RECORD->toHtml()
-                + html);
+//    ui->TEXT_MSG_RECORD->setHtml(
+//                ui->TEXT_MSG_RECORD->toHtml()
+//                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
-/* 提示是否下载文件 */
+/*  */
 void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
-{
-//    QMessageBox::StandardButton b = QMessageBox::information(this, "下载",
-//                                                             QString("确定下载[%1]吗？").arg(arg1),
-//                                                             QMessageBox::StandardButton::Yes
-//                                                             | QMessageBox::StandardButton::No);
-//    if (b == QMessageBox::StandardButton::Yes)
-//    {
-//        QString tmp = arg1;
-//        int idx = arg1.lastIndexOf(".");
-//        if (arg1[idx+1] == 'p' || arg1[idx+1] == 'P'
-//                || arg1[idx+1] == 'j' || arg1[idx+1] == 'J')
-//        {
-
-//            m_pTextChat->SendMsg(MSG_DOWNLOAD_IMAGE, tmp);
-//        }
-//        else
-//        {
-//            m_pTextChat->SendMsg(MSG_DOWNLOAD_FILE, tmp);
-//        }
-//    }
-}
-
-/* 打开文件位置窗口 */
-void MainWindow::on_COMBO_HAD_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
 {
 
 }
@@ -502,6 +455,8 @@ void MainWindow::on_COMBO_HAD_DOWN_FILE_LIST_currentIndexChanged(const QString &
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     m_pTextChat->Close();
+    m_pFileChat->stop();
+    m_pPicChat->stop();
     this->close();
 }
 
@@ -509,30 +464,16 @@ void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 void MainWindow::on_BTN_MIN_clicked()
 {
     this->showMinimized();
-    m_pVideo->GetViewfinder()->hide();
 }
+
 
 /* 关闭，开启摄像头 */
 void MainWindow::on_BTN_VIDEO_clicked()
 {
-    static bool isclose = false;
-    m_pVideo->SetInitPosition(this->mapToGlobal(QPoint(0,0)));
-    if (isclose)
-    {
-        /* 关闭摄像头 */
-        m_pVideo->CloseCamera();
-        ui->BTN_VIDEO->setIcon(QIcon("src/closevideo.png"));
-        isclose = !isclose;
-    }
-    else
-    {
-        /* 打开摄像头 */
-        m_pVideo->OpenCamera();
-        ui->BTN_VIDEO->setIcon(QIcon("src/openvideo.png"));
-        isclose = !isclose;
-    }
+
 
 }
+
 
 void MainWindow::on_BTN_SEND_EMOJI_clicked()
 {
@@ -543,6 +484,7 @@ void MainWindow::on_BTN_SEND_EMOJI_clicked()
         ui->TABLE_EMOJI->hide();
     m_is_show_emoji_table = !m_is_show_emoji_table;
 }
+
 
 void MainWindow::on_TABLE_EMOJI_clicked(const QModelIndex &index)
 {
@@ -575,7 +517,9 @@ void MainWindow::on_TABLE_EMOJI_clicked(const QModelIndex &index)
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
+
 /* frequency of shaking window is five seconds */
+
 void MainWindow::on_BTN_SHAKE_clicked()
 {
     if (m_is_show_time)
@@ -604,19 +548,12 @@ void MainWindow::on_BTN_SHAKE_clicked()
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
-/* 提升视频窗口 */
-void MainWindow::slot_raise_video()
-{
-    m_pVideo==nullptr?0:(m_pVideo->GetViewfinder()->raise(),0);
-    if (m_pVideo->CameraIsOpen() && m_pVideo->GetViewfinder()->isHidden() && !this->isMinimized())
-    {
-        m_pVideo->GetViewfinder()->show();
-    }
-}
+
 
 ////////////////////////////////////////////////////////////////////////
 /// 文本消息槽函数
 ////////////////////////////////////////////////////////////////////////
+
 /* 对端关闭连接 */
 void MainWindow::slot_peer_close()
 {
@@ -626,16 +563,12 @@ void MainWindow::slot_peer_close()
     qDebug() << "??";
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
-    ui->COMBO_HAD_DOWN_FILE_LIST->clear();
 }
 
-void MainWindow::slot_peer_conn_err()
-{
-    QMessageBox::information(nullptr, "通信错误", "对方建立网络连接过程出错");
-    m_pTextChat->Close();
-}
+
 
 /* 接受消息 */
+
 void MainWindow::slot_recv_text_msg(QList<QString>& text, QList<QString>& emojis)
 {
     /* 设置滚动条置底 */
@@ -668,7 +601,9 @@ void MainWindow::slot_recv_text_msg(QList<QString>& text, QList<QString>& emojis
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
+
 /* 聊天请求到达 */
+
 void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &btn)
 {
     QMessageBox::StandardButton b = QMessageBox::information(this, "聊天请求", text,
@@ -677,7 +612,9 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
     btn = b;
 }
 
+
 /* 请求结果 */
+
 void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 {
     if (ret)
@@ -693,16 +630,21 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
     {/* 聊天请求被拒绝 */
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
         ui->LIST_HOST->setEnabled(false);
+        m_pFileChat->stop();
+        m_pPicChat->stop();
     }
 }
 
+
 /* 发送消息失败 */
+
 void MainWindow::slot_send_error()
 {
     this->__Set_Session(false);
+    m_pFileChat->stop();
+    m_pPicChat->stop();
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
-    ui->COMBO_HAD_DOWN_FILE_LIST->clear();
 }
 
 
@@ -712,14 +654,15 @@ void MainWindow::slot_show_time()
 
 }
 
+
 void MainWindow::slot_shake_window()
 {
     /* 设置窗口置顶 */
-    Qt::WindowFlags flags = this->windowFlags();
-    flags |= Qt::WindowStaysOnTopHint;
-    this->setWindowFlags(flags);
-    this->show();
-    qDebug() << "show window";
+//    Qt::WindowFlags flags = this->windowFlags();
+//    flags |= Qt::WindowStaysOnTopHint;
+//    this->setWindowFlags(flags);
+//    this->show();
+//    qDebug() << "show window";
 
     QPoint point = this->pos();
     int x = point.x();
@@ -744,73 +687,22 @@ void MainWindow::slot_shake_window()
     }
     this->move(point);
     /* 取消置顶 */
-    this->setWindowFlags(flags & ~Qt::WindowStaysOnTopHint);
-    this->show();
+//    this->setWindowFlags(flags & ~Qt::WindowStaysOnTopHint);
+//    this->show();
 
 }
 
-/* 1.未下载下拉框 删除未下载文件2.已下载下拉框 添加下载完成的文件*/
-void MainWindow::slot_recv_file_success(const QString &file)
+
+/* */
+void MainWindow::slot_recv_file_success(const QString& file)
 {
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
-
-    /* 消息框提示下载完成 */
-    ui->TEXT_MSG_RECORD->setHtml(
-                ui->TEXT_MSG_RECORD->toHtml()
-                + TEXT_FRONT.arg(RIGHT, FONT, TEXT_COLOR_3, FONT_SIZE)
-                + "文件["+ file +"]"+"下载完成" + TEXT_BACK);
 }
 
-void MainWindow::slot_recv_picture_success(const QString &file)
+void MainWindow::slot_recv_picture_success(const QString& file)
 {
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
-    /* 消息框提示下载完成 */
-    ui->TEXT_MSG_RECORD->setHtml(
-                ui->TEXT_MSG_RECORD->toHtml()
-                + PIC_HTML_STRING.arg(LEFT, QString("./tmp/%1").arg(file),
-                                      QString::number(100),QString::number(200)));
-    /* 判断是否是缩略图进行不同操作 */
-//    bool b = false;
-//    int count = ui->COMBO_DOWN_FILE_LIST->count();
-//    int i;
-//    for (i = 0; i < count; ++i)
-//    {
-//        QString name = ui->COMBO_DOWN_FILE_LIST->itemText(i);
-//        if (name == file)
-//        {
-//            b = true;
-//            break;
-//        }
-//    }
-//    if (b)
-//    {/* 是缩略图 */
-//        ui->COMBO_DOWN_FILE_LIST->addItem(file);
-//        ui->TEXT_MSG_RECORD->setHtml(
-//                    ui->TEXT_MSG_RECORD->toHtml()
-//                    + PIC_HTML_STRING.arg(LEFT, QString("./tmp/")+file,
-//                                          QString::number(200), QString::number(100)));
-//    }
-//    else
-//    {/* 不是缩略图 */
-//        ui->COMBO_DOWN_FILE_LIST->removeItem(i);
-//        ui->COMBO_HAD_DOWN_FILE_LIST->addItem(file);
-//        /* 消息框提示下载完成 */
-//        ui->TEXT_MSG_RECORD->setHtml(
-//                    ui->TEXT_MSG_RECORD->toHtml()
-//                    + TEXT_FRONT.arg(CENTER, FONT, TEXT_COLOR_3, FONT_SIZE)
-//                    + "图片["+ file +"]"+"下载完成" + TEXT_BACK);
-//    }
 }
-
-//void MainWindow::slot_recv_file_info(const QString &file)
-//{
-//    ui->COMBO_DOWN_FILE_LIST->addItem(file);
-//}
-
-//void MainWindow::slot_recv_picture_info(const QString &file)
-//{
-
-//}
 
 
 

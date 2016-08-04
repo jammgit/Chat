@@ -19,9 +19,9 @@
 #include "findterminal.h"
 #include "textchat.h"
 #include "mylistwidget.h"
-#include "videodisplay.h"
 #include "myextextedit.h"
-
+#include "transferfile.h"
+#include "transferpic.h"
 
 /*  SIGNAL/SLOT理解：
  *      signal（int a, char &b, string * c）
@@ -80,7 +80,6 @@ private slots:  /* ------------窗口控件槽函数---------------- */
 
     void on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1);
 
-    void on_COMBO_HAD_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1);
 
 public slots: /* --------------文本消息槽函数---------------- */
     /* 请求聊天的结果，被接受（true）或者拒绝（false）*/
@@ -91,21 +90,19 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_recv_text_msg(QList<QString>& text, QList<QString>& emojis);
     /* 关闭连接信号函数 */
     void slot_peer_close();
-    /* */
-    void slot_peer_conn_err();
     /* 通信出错 */
     void slot_send_error();
-    /* 提升视频窗口 */
-    void slot_raise_video();
     /* 显示时间 */
     void slot_show_time();
 
     void slot_shake_window();
-
-//    void slot_recv_picture_info(const QString& file);
-//    void slot_recv_file_info(const QString& file);
+    /* */
     void slot_recv_file_success(const QString& file);
     void slot_recv_picture_success(const QString& file);
+
+signals:
+    /* for file and picture */
+    void signal_create_socket(const QHostAddress& addr);
 
 
 public slots: /* --------------视频信息槽函数---------------- */
@@ -119,8 +116,6 @@ private:
 
     bool m_is_show_emoji_table;
 
-    /* 执行视频窗口的的raise */
-    QTimer *m_pTimer;
     /* 正在聊天的对端用户的信息 */
     chat_host_t m_peerhost;
     /* window move position */
@@ -129,8 +124,9 @@ private:
     FindTerminal *m_pFindTerminal;
     /* 文本聊天接口 */
     TextChat *m_pTextChat;
-    /* 摄像头接口 */
-    VideoDisplay *m_pVideo;
+
+    TransferFile *m_pFileChat;
+    TransferPic *m_pPicChat;
 
 };
 

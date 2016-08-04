@@ -24,8 +24,7 @@ SOURCES += main.cpp\
     videodisplay.cpp \
     myextextedit.cpp \
     transferfile.cpp \
-    transferpic.cpp \
-    mytcpserver.cpp
+    transferpic.cpp
 
 HEADERS  += mainwindow.h \
     findterminal.h \
@@ -35,9 +34,7 @@ HEADERS  += mainwindow.h \
     msginfo.h \
     myextextedit.h \
     transferfile.h \
-    threadmanagement.h \
-    transferpic.h \
-    mytcpserver.h
+    transferpic.h
 
 FORMS    += mainwindow.ui
 

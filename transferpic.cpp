@@ -1,10 +1,125 @@
 #include "transferpic.h"
 
-TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
-    : QObject(parent),m_pSocket(socket)
+TransferPic::TransferPic(QObject* pwin, QObject *parent)
+    : QThread(parent),m_pWin(pwin),m_pListen(nullptr),
+      m_pSocket(nullptr), m_stop(false),m_pMutex(new QMutex),
+      m_pSem(new QSemaphore),m_pForBlock(new QSemaphore)
 {
-    if (m_pSocket)
-        connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()));
+    connect(this, SIGNAL(signal_recv_picture_success(const QString&)),
+            pwin, SLOT(slot_recv_picture_success(const QString&)));
+    connect(this, SIGNAL(signal_peer_close()), pwin, SLOT(slot_peer_close()));
+}
+
+void TransferPic::slot_create_socket(const QHostAddress& addr)
+{
+    m_addr = addr;
+    m_is_get_socket_from_listen = false;
+    m_pForBlock->release();
+}
+
+void TransferPic::slot_get_listen_socket()
+{
+    m_is_get_socket_from_listen = true;
+    m_pForBlock->release();
+}
+
+void TransferPic::run()
+{
+    m_pListen = new QTcpServer;
+    if (!m_pListen)
+    {
+        QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
+        exit(0);
+    }
+
+    if(!m_pListen->listen(QHostAddress::AnyIPv4, PICTURE_SERVER_PORT))
+    {
+        QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
+        exit(0);
+    }
+    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()));
+    /* block */
+    while (true)
+    {
+        qDebug() << "thread in acquire";
+        m_pForBlock->acquire();
+        if (m_is_get_socket_from_listen)
+        {
+            if (m_pListen->hasPendingConnections())
+            {
+                m_pSocket = m_pListen->nextPendingConnection();
+                if (!m_pSocket)
+                {
+
+                }
+                else
+                {
+                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+                }
+            }
+        }
+        else
+        {
+            m_pSocket = new QTcpSocket;
+            m_pSocket->connectToHost(m_addr, PICTURE_SERVER_PORT);
+            if (m_pSocket->waitForConnected())
+            {
+                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()));
+            }
+            else
+            {
+
+            }
+        }
+
+        while (!m_stop)
+        {
+            qDebug() << "acquire";
+            m_thread_is_in_acquire = true;
+            m_pSem->acquire();
+            m_thread_is_in_acquire = false;
+            qDebug() << "Process one picture";
+            //m_pMutex->lock();
+            if (m_pMutex->tryLock(1000))           // just wait 3 seconds(for close session)
+            {
+                Source file = m_tasklist.front();
+                m_tasklist.pop_front();
+                m_pMutex->unlock();
+                /* 开始读取文件并发送,实例类必须实现Process函数 */
+                this->Process(file);
+            }
+            else
+            {/* slient close session:see TransferFile::stop function */
+                m_pMutex->unlock();
+            }
+        }
+        /* when close session */
+        m_pSocket->close();
+        delete m_pSocket;
+        m_stop = false;
+    }
+}
+
+void TransferPic::Append(const QString &filename)
+{
+    qDebug() << "append";
+    Source s;
+    s.filepath = filename;
+    //s.transname = transname;
+    m_pMutex->lock();
+    m_tasklist.push_back(s);
+    m_pMutex->unlock();
+    m_pSem->release();
+}
+
+void TransferPic::stop()
+{
+    m_stop = true;
+    if (m_thread_is_in_acquire)
+    {/* thread is in acquire */
+        m_pMutex->lock();
+        m_pSem->release();
+    }
 }
 
 
@@ -20,7 +135,7 @@ void TransferPic::Process(Source& source)
     if (m_files.find(text.split("/").back()) != m_files.end())
     {/* 如果存在同名文件,插入一个时间值做分辨 */
         int idx = text.lastIndexOf(".");
-        text.insert(idx, QString("_%1").arg(QDateTime::currentDateTime().toString()));
+        text.insert(idx, QString("_%1").arg(QString(QDateTime::currentDateTime().toString().toInt())));
     }
     source.transname = text;
     qDebug() << text.split("/").back();
@@ -31,9 +146,13 @@ void TransferPic::Process(Source& source)
     QFile file(source.filepath);
     file.open(QFile::ReadOnly);
     qint64 ret;
-    while (!file.atEnd())
+    while (!file.atEnd() && !m_stop)
     {
         QString text(file.read(1024));
+        if (text.isEmpty())
+        {
+            qDebug() << "file empty";
+        }
         /* 非/二进制文件，故最好先utf8 */
         if (text.length() < 1024)
         {
@@ -41,12 +160,15 @@ void TransferPic::Process(Source& source)
                          + END.toUtf8().toBase64() + ':'
                          + text.toUtf8().toBase64() + ';');
             ret = m_pSocket->write(data.toLatin1());
+            qDebug() << m_pSocket->error();
+            qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
             break;
         }
         else
         {
             QString data(base + ':' + text.toUtf8().toBase64() + ';');
             ret = m_pSocket->write(data.toLatin1());
+            qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
         }
         if (ret == -1)
         {

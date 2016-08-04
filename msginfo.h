@@ -11,7 +11,7 @@ typedef struct
 
 #define PICTURE_NAME_FILTER "Image Files(*.png *.jpg)"
 
-#define END                QString("END")
+#define END                 QString("END")
 /* 由文本传输套接字使用 */
 #define MSG_DOWNLOAD_IMAGE 'B'   // msg format -> msgtype:timestring:filename;
 #define MSG_DOWNLOAD_FILE  'D'   // msg format -> msgtype:timestring:filename;
@@ -59,10 +59,12 @@ typedef struct
 #define ACCEPT   QString("accept").toUtf8()
 #define REJECT   QString("reject").toUtf8()
 #define CLOSE    QString("!").toUtf8()
-#define CONN_ERR QString("~").toUtf8()
 /* 这是糟糕的一个设计：发送此文本表示结束聊天，所以如果用户输入
  * 此文本即发生结束聊天，问题来源：QT socket同步关闭！不过--
  * Base64编码解决了问题  */
+
+#define PICTURE_SERVER_PORT 8887
+#define FILE_SERVER_PORT 8886
 
 
 #endif // MSGTYPE_H
