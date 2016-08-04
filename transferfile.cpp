@@ -10,20 +10,45 @@ TransferFile::TransferFile(QObject* pwin, QObject *parent)
                 slot_recv_file_success(QString)));
 
     connect(this, SIGNAL(signal_peer_close()), pwin, SLOT(slot_peer_close()));
+    connect(this, SIGNAL(signal_process()), this, SLOT(slot_process()),
+            Qt::QueuedConnection);
+    connect(this, SIGNAL(signal_stop()), this, SLOT(slot_stop()),
+            Qt::QueuedConnection);
 }
 
 void TransferFile::slot_create_socket(const QHostAddress& addr)
 {
-    m_addr = addr;
-    m_is_get_socket_from_listen = false;
-    m_pForBlock->release();
+    m_pSocket = new QTcpSocket;
+    m_pSocket->connectToHost(addr, FILE_SERVER_PORT);
+    if (m_pSocket->waitForConnected())
+    {
+        m_pSocket->moveToThread(this);
+        connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
+                Qt::DirectConnection);
+        qDebug() << "connect so";
+    }
+    else
+    {
+        qDebug() << "connect error";
+    }
 }
 
 void TransferFile::slot_get_listen_socket()
 {
-    qDebug() << "get listen socket";
-    m_is_get_socket_from_listen = true;
-    m_pForBlock->release();
+    if (m_pListen->hasPendingConnections())
+    {
+        m_pSocket = m_pListen->nextPendingConnection();
+        if (!m_pSocket)
+        {
+
+        }
+        else
+        {
+            qDebug() << "get connection";
+            connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
+                    Qt::DirectConnection);
+        }
+    }
 }
 
 void TransferFile::run()
@@ -42,71 +67,8 @@ void TransferFile::run()
     }
     connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
             Qt::DirectConnection);
-    /* block */
-    while (true)
-    {
-        qDebug() << "thread in acquire";
-        m_pForBlock->acquire();
 
-        if (m_is_get_socket_from_listen)
-        {
-            qDebug() << "is true";
-            if (m_pListen->hasPendingConnections())
-            {
-                QTcpSocket *m_pSocket = m_pListen->nextPendingConnection();
-                if (!m_pSocket)
-                {
-
-                }
-                else
-                {
-                    qDebug() << "get connection";
-                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
-                            Qt::DirectConnection);
-                }
-            }
-        }
-        else
-        {
-            qDebug() << "connect so";
-            m_pSocket = new QTcpSocket;
-            m_pSocket->connectToHost(m_addr, FILE_SERVER_PORT);
-            if (m_pSocket->waitForConnected())
-            {
-                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
-                        Qt::DirectConnection);
-            }
-            else
-            {
-
-            }
-        }
-
-        while (!m_stop)
-        {
-            qDebug() << "acquire";
-            m_thread_is_in_acquire = true;
-            m_pSem->acquire();
-            m_thread_is_in_acquire = false;
-            qDebug() << "Process one file";
-            if (m_pMutex->tryLock(1000))           // just wait 3 seconds(for close session)
-            {
-                Source file = m_tasklist.front();
-                m_tasklist.pop_front();
-                m_pMutex->unlock();
-                /* 开始读取文件并发送,实例类必须实现Process函数 */
-                this->Process(file);
-            }
-            else
-            {/* slient close session:see TransferFile::stop function */
-                m_pMutex->unlock();
-            }
-        }
-        /* when close session */
-        m_pSocket->close();
-        delete m_pSocket;
-        m_stop = false;
-    }
+    this->exec();
 }
 
 void TransferFile::Append(const QString &filename)
@@ -119,23 +81,35 @@ void TransferFile::Append(const QString &filename)
     m_tasklist.push_back(s);
     m_pMutex->unlock();
     m_pSem->release();
+    emit this->signal_process();
 }
 
 void TransferFile::stop()
 {
+    emit this->signal_stop();
+}
+
+void TransferFile::slot_stop()
+{
     m_stop = true;
-    if (m_thread_is_in_acquire)
-    {/* thread is in acquire */
-        m_pMutex->lock();
-        m_pSem->release();
-    }
+    m_pSocket->close();
+    delete m_pSocket;
 }
 
 /* 发送文件 */
-void TransferFile::Process(Source& source)
+void TransferFile::slot_process()
 {
     if (!m_pSocket)
         return;
+
+    m_pSem->acquire();
+    Source source;
+    m_pMutex->lock();
+    source = m_tasklist.front();
+    m_tasklist.pop_front();
+    m_pMutex->unlock();
+
+    qDebug() << "Process one file";
     qDebug() << m_pSocket;
     /* */
     QString text = source.filepath;
@@ -185,6 +159,7 @@ void TransferFile::Process(Source& source)
     file.close();
     if (ret == -1)
         emit this->signal_peer_close();
+
 
 }
 

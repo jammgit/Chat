@@ -161,10 +161,14 @@ void MainWindow::__Init()
     m_pPicChat = new TransferPic(this);
     m_pPicChat->start();
 
+    qRegisterMetaType<QHostAddress>("QHostAddress");
+
     connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
-            m_pFileChat, SLOT(slot_create_socket(const QHostAddress&)));
+            m_pFileChat, SLOT(slot_create_socket(const QHostAddress&)),
+            Qt::QueuedConnection);
     connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
-            m_pPicChat, SLOT(slot_create_socket(const QHostAddress&)));
+            m_pPicChat, SLOT(slot_create_socket(const QHostAddress&)),
+            Qt::QueuedConnection);
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),

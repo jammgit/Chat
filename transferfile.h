@@ -40,7 +40,7 @@ public:
     /* 添加任务 */
     void Append(const QString& filename);
 
-    void Process(Source& source);
+
 
 protected:
     void run();
@@ -48,6 +48,9 @@ protected:
 signals:
     void signal_peer_close();
     void signal_recv_file_success(const QString& file);
+    void signal_process();
+    void signal_stop();
+
 
 public slots:
     /* mainwiddow trigger */
@@ -58,6 +61,9 @@ private slots:
     void slot_recv_file();
     /* newConnection trigger */
     void slot_get_listen_socket();
+
+    void slot_process();
+    void slot_stop();
 
 private:
     bool m_thread_is_in_acquire;
