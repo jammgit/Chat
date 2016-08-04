@@ -156,15 +156,15 @@ void MainWindow::__Init()
     m_pTextChat = new TextChat;
     m_pTextChat->SetFindTerminal(m_pFindTerminal);
 
-    m_pFileChat = new TransferFile(this);
-    m_pFileChat->start();
-    m_pPicChat = new TransferPic(this);
-    m_pPicChat->start();
+//    m_pFileChat = new TransferFile(this);
+//    m_pFileChat->start();
+//    m_pPicChat = new TransferPic(this);
+//    m_pPicChat->start();
 
-    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
-            m_pFileChat, SLOT(slot_create_socket(const QHostAddress&)));
-    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
-            m_pPicChat, SLOT(slot_create_socket(const QHostAddress&)));
+//    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
+//            m_pFileChat, SLOT(slot_create_socket(const QHostAddress&)));
+//    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
+//            m_pPicChat, SLOT(slot_create_socket(const QHostAddress&)));
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
@@ -313,7 +313,7 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     ip[iplen] = '\0';
     qDebug() << QString(ip);
     /* create file , picture socket */
-    emit this->signal_create_socket(QHostAddress(QString(ip)));
+    //emit this->signal_create_socket(QHostAddress(QString(ip)));
 
     /* 建立三个必须的连接连接 */
     bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
@@ -357,8 +357,8 @@ void MainWindow::on_BTN_SEND_clicked()
 void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 {
     m_pTextChat->Close();
-    m_pFileChat->stop();
-    m_pPicChat->stop();
+//    m_pFileChat->stop();
+//    m_pPicChat->stop();
 
     QMessageBox::information(this, "提示", "聊天结束");
     this->__Set_Session(false);
@@ -395,9 +395,9 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     fd->close();
     qDebug() << fileNameList;
 //    QString html;
-    foreach (QString path, fileNameList) {
-       m_pPicChat->Append(path);
-    }
+//    foreach (QString path, fileNameList) {
+//       m_pPicChat->Append(path);
+//    }
 //    ui->TEXT_MSG_RECORD->setHtml(
 //                ui->TEXT_MSG_RECORD->toHtml()
 //                + html);
@@ -434,9 +434,9 @@ void MainWindow::on_BTN_FILE_clicked()
     fd->close();
     qDebug() << fileNameList;
 
-    foreach (QString path, fileNameList) {
-       m_pFileChat->Append(path);
-    }
+//    foreach (QString path, fileNameList) {
+//       m_pFileChat->Append(path);
+//    }
 //    ui->TEXT_MSG_RECORD->setHtml(
 //                ui->TEXT_MSG_RECORD->toHtml()
 //                + html);
@@ -455,8 +455,8 @@ void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     m_pTextChat->Close();
-    m_pFileChat->stop();
-    m_pPicChat->stop();
+//    m_pFileChat->stop();
+//    m_pPicChat->stop();
     this->close();
 }
 
@@ -557,8 +557,8 @@ void MainWindow::on_BTN_SHAKE_clicked()
 /* 对端关闭连接 */
 void MainWindow::slot_peer_close()
 {
-    m_pPicChat->stop();
-    m_pFileChat->stop();
+//    m_pPicChat->stop();
+//    m_pFileChat->stop();
     QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
@@ -630,8 +630,8 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
     {/* 聊天请求被拒绝 */
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
         ui->LIST_HOST->setEnabled(false);
-        m_pFileChat->stop();
-        m_pPicChat->stop();
+//        m_pFileChat->stop();
+//        m_pPicChat->stop();
     }
 }
 
@@ -641,8 +641,8 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 void MainWindow::slot_send_error()
 {
     this->__Set_Session(false);
-    m_pFileChat->stop();
-    m_pPicChat->stop();
+//    m_pFileChat->stop();
+//    m_pPicChat->stop();
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
 }
