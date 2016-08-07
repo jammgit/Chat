@@ -101,32 +101,33 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_recv_picture_success(const QString& file);
 
 signals:
-    /* for file and picture */
-    void signal_create_socket(const QHostAddress& addr);
-
+    /* 主线程通知 */
+    void signal_append_task(const QString& filepath);
 
 public slots: /* --------------视频信息槽函数---------------- */
 
 
 private:
-    Ui::MainWindow *ui;
+    Ui::MainWindow              * ui;
     /* 用于文本框显示时间的计时 */
-    QTimer *m_pShowTimer;
-    bool m_is_show_time;
+    QTimer                      * m_pShowTimer;
+    bool                          m_is_show_time;
 
-    bool m_is_show_emoji_table;
+    bool                          m_is_show_emoji_table;
 
     /* 正在聊天的对端用户的信息 */
-    chat_host_t m_peerhost;
+    chat_host_t                   m_peerhost;
     /* window move position */
-    QPoint m_position;
+    QPoint                        m_position;
     /* 多播终端发现接口 */
-    FindTerminal *m_pFindTerminal;
+    FindTerminal                * m_pFindTerminal;
     /* 文本聊天接口 */
-    TextChat *m_pTextChat;
+    TextChat                    * m_pTextChat;
+    /* 文件服务 */
+    MyFileThread_Client         * m_pFileClient;
+    MyFileThread_Server         * m_pFileServer;
 
-    TransferFile *m_pFileChat;
-    TransferPic *m_pPicChat;
+
 
 };
 

@@ -46,4 +46,19 @@ void MyExTextEdit::slot_animate(int a)
     }
 }
 
+void MyExTextEdit::contextMenuEvent(QContextMenuEvent *e)
+{
+//    QMenu *menu = new QMenu();
+//    menu->addSeparator();
+//    menu->addSeparator();
+//    menu->addAction(new QAction(QString("asa"),menu));
+//    menu->addSeparator();
+//    menu->addSeparator();
+//    menu->addAction(new QAction(QString("qweq"),menu));
+//    menu->addSeparator();
+//    menu->addSeparator();
+//    menu->exec(e->globalPos());
+//    delete menu;
+}
+
 

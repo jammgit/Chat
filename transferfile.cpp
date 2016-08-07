@@ -1,197 +1,170 @@
 #include "transferfile.h"
 
-TransferFile::TransferFile(QObject* pwin, QObject *parent)
-    : QThread(parent),m_pWin(pwin),m_pListen(nullptr),
-      m_pSocket(nullptr), m_stop(false),m_pMutex(new QMutex),
-      m_pSem(new QSemaphore),m_pForBlock(new QSemaphore)
+///////////////////////////////////////////////////////////////////////
+/// MyFileThread_Client
+///////////////////////////////////////////////////////////////////////////
+MyFileThread_Client::MyFileThread_Client(QObject*pwin, const QHostAddress& addr, QObject *parent)
+    :QThread(parent),m_pSocket(nullptr),m_peer_addr(addr),m_pWin(pwin),m_pFileSrv(nullptr)
 {
 
-    connect(this, SIGNAL(signal_recv_file_success(QString)), pwin, SLOT(
-                slot_recv_file_success(QString)));
-
-    connect(this, SIGNAL(signal_peer_close()), pwin, SLOT(slot_peer_close()));
 }
 
-void TransferFile::slot_create_socket(const QHostAddress& addr)
+void MyFileThread_Client::run()
 {
-    m_addr = addr;
-    m_is_get_socket_from_listen = false;
-    m_pForBlock->release();
-}
+    m_pSocket = new QTcpSocket();
 
-void TransferFile::slot_get_listen_socket()
-{
-    qDebug() << "get listen socket";
-    m_is_get_socket_from_listen = true;
-    m_pForBlock->release();
-}
+    m_pSocket->connectToHost(m_peer_addr, FILE_SERVER_PORT);
+    if (!m_pSocket->waitForConnected())
+    {/* 未连接成功 */
 
-void TransferFile::run()
-{
-    m_pListen = new QTcpServer;
-    if (!m_pListen)
-    {
-        QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
-        exit(0);
     }
 
-    if(!m_pListen->listen(QHostAddress::AnyIPv4, FILE_SERVER_PORT))
+    m_pFileSrv = new TransferFile(m_pSocket);
+    /* 套接字可读信号 */
+    connect(m_pSocket, SIGNAL(readyRead()), m_pFileSrv, SLOT(slot_recv_file()));
+    /* 对端关闭、接受完一个文件信号 */
+    connect(m_pFileSrv, SIGNAL(signal_peer_close()), m_pWin, SLOT(slot_peer_close()));
+    connect(m_pFileSrv, SIGNAL(signal_recv_file_success(QString)),
+            m_pWin, SLOT(slot_recv_file_success(QString)));
+    /* 主线程添加一个任务 */
+    connect(m_pWin, SIGNAL(signal_append_task(const QString& )),
+            m_pFileSrv, SLOT(slot_append_task(const QString& )));
+    /* 线程结束 */
+    connect(this, SIGNAL(finished()), this, SLOT(slot_finished()));
+
+    this->exec();
+}
+
+void MyFileThread_Client::slot_finished()
+{
+    if (m_pSocket)
     {
-        QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
-        exit(0);
-    }
-    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
-            Qt::DirectConnection);
-    /* block */
-    while (true)
-    {
-        qDebug() << "thread in acquire";
-        m_pForBlock->acquire();
-
-        if (m_is_get_socket_from_listen)
-        {
-            qDebug() << "is true";
-            if (m_pListen->hasPendingConnections())
-            {
-                QTcpSocket *m_pSocket = m_pListen->nextPendingConnection();
-                if (!m_pSocket)
-                {
-
-                }
-                else
-                {
-                    qDebug() << "get connection";
-                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
-                            Qt::DirectConnection);
-                }
-            }
-        }
-        else
-        {
-            qDebug() << "connect so";
-            m_pSocket = new QTcpSocket;
-            m_pSocket->connectToHost(m_addr, FILE_SERVER_PORT);
-            if (m_pSocket->waitForConnected())
-            {
-                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_file()),
-                        Qt::DirectConnection);
-            }
-            else
-            {
-
-            }
-        }
-
-        while (!m_stop)
-        {
-            qDebug() << "acquire";
-            m_thread_is_in_acquire = true;
-            m_pSem->acquire();
-            m_thread_is_in_acquire = false;
-            qDebug() << "Process one file";
-            if (m_pMutex->tryLock(1000))           // just wait 3 seconds(for close session)
-            {
-                Source file = m_tasklist.front();
-                m_tasklist.pop_front();
-                m_pMutex->unlock();
-                /* 开始读取文件并发送,实例类必须实现Process函数 */
-                this->Process(file);
-            }
-            else
-            {/* slient close session:see TransferFile::stop function */
-                m_pMutex->unlock();
-            }
-        }
-        /* when close session */
         m_pSocket->close();
         delete m_pSocket;
-        m_stop = false;
+        m_pSocket = nullptr;
+    }
+    if (m_pFileSrv)
+    {
+        delete m_pFileSrv;
+        m_pFileSrv = nullptr;
     }
 }
 
-void TransferFile::Append(const QString &filename)
+////////////////////////////////////////////////////////////////////////////
+/// MyFileThread_Server
+//////////////////////////////////////////////////////////////////////////////
+MyFileThread_Server::MyFileThread_Server(QObject*pwin, QObject* parent)
+    :QThread(parent),m_pListen(nullptr),m_pSocket(nullptr),
+      m_pWin(pwin),m_pFileSrv(nullptr)
 {
-    qDebug() << "append";
+
+}
+
+void MyFileThread_Server::run()
+{
+    if (!m_pListen)
+    {
+        m_pListen = new QTcpServer();
+        if (!m_pListen)
+        {
+            QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
+            exit(0);
+        }
+
+        if(!m_pListen->listen(QHostAddress::AnyIPv4, FILE_SERVER_PORT))
+        {
+            QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
+            exit(0);
+        }
+
+    }
+
+    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_new_connection()));
+
+    connect(this, SIGNAL(finished()), this, SLOT(slot_finished()));
+
+    this->exec();
+}
+
+void MyFileThread_Server::slot_new_connection()
+{
+    if (m_pListen->hasPendingConnections())
+    {
+        m_pSocket = m_pListen->nextPendingConnection();
+
+
+        m_pFileSrv = new TransferFile(m_pSocket);
+        /* 套接字可读信号 */
+        connect(m_pSocket, SIGNAL(readyRead()), m_pFileSrv, SLOT(slot_recv_file()));
+        /* 对端关闭、接受完一个文件信号 */
+        connect(m_pFileSrv, SIGNAL(signal_peer_close()), m_pWin, SLOT(slot_peer_close()));
+        connect(m_pFileSrv, SIGNAL(signal_recv_file_success(QString)),
+                m_pWin, SLOT(slot_recv_file_success(QString)));
+        /* 主线程添加一个任务 */
+        connect(m_pWin, SIGNAL(signal_append_task(const QString&)),
+                m_pFileSrv, SLOT(slot_append_task(const QString&)));
+    }
+}
+
+void MyFileThread_Server::slot_finished()
+{/* 不需要关闭监听套接字 */
+    if (m_pSocket)
+    {
+        m_pSocket->close();
+        delete m_pSocket;
+        m_pSocket = nullptr;
+    }
+    if (m_pFileSrv)
+    {
+        delete m_pFileSrv;
+        m_pFileSrv = nullptr;
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// TransferFile
+/// ///////////////////////////////////////////////////////////////////////////
+
+TransferFile::TransferFile(QTcpSocket*socket, QObject *parent)
+    : QObject(parent),m_pSocket(socket),m_pMutex(new QMutex),
+      m_send_file(nullptr),m_recv_file(nullptr)
+{
+
+    m_pSendTimer = new QTimer;
+    connect(m_pSendTimer, SIGNAL(timeout()), this, SLOT(slot_send_file()));
+    /* 每一秒检测一次是否有文件需要发送，有则发送一部分，避免阻塞 */
+    m_pSendTimer->start(1000);
+}
+
+
+/* 添加任务 */
+void TransferFile::slot_append_task(const QString &filepath)
+{
     Source s;
-    s.filepath = filename;
-    //s.transname = transname;
-    m_pMutex->lock();
-    m_tasklist.push_back(s);
-    m_pMutex->unlock();
-    m_pSem->release();
-}
-
-void TransferFile::stop()
-{
-    m_stop = true;
-    if (m_thread_is_in_acquire)
-    {/* thread is in acquire */
-        m_pMutex->lock();
-        m_pSem->release();
-    }
-}
-
-/* 发送文件 */
-void TransferFile::Process(Source& source)
-{
-    if (!m_pSocket)
-        return;
-    qDebug() << m_pSocket;
-    /* */
-    QString text = source.filepath;
+    s.filepath = filepath;
+    QString text = filepath;
     if (m_files.find(text.split("/").back()) != m_files.end())
     {/* 如果存在同名文件,插入一个时间值做分辨 */
         int idx = text.lastIndexOf(".");
         text.insert(idx, QString("_%1").arg(QString(QDateTime::currentDateTime().toString().toInt())));
     }
-    source.transname = text;
+
+    s.transname = text.split("/").back();
     qDebug() << text.split("/").back();
     /* save */
-    m_files[text.split("/").back()] = source.filepath;
+    m_files[text.split("/").back()] = s.filepath;
 
-    QString base = source.transname.toUtf8().toBase64();
-    QFile file(source.filepath);
-    file.open(QFile::ReadOnly);
-    qint64 ret;
-    while (!file.atEnd() && !m_stop)
-    {
-        QString text(file.read(1024));
-        /* 非/二进制文件，故最好先utf8 */
-        if (text.length() < 1024)
-        {
-            QString data(base + ':'
-                         + END.toUtf8().toBase64() + ':'
-                         + text.toUtf8().toBase64() + ';');
-            ret = m_pSocket->write(data.toLatin1());
-            //qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
-            qDebug() << m_pSocket->error();
-            qDebug() << m_pSocket->errorString();
-            break;
-        }
-        else
-        {
-            QString data(base + ':' + text.toUtf8().toBase64() + ';');
-            ret = m_pSocket->write(data.toLatin1());
-            qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
-            qDebug() << m_pSocket->error();
-            qDebug() << m_pSocket->errorString();
-        }
-        if (ret == -1)
-        {
-            emit this->signal_peer_close();
-        }
-    }
+    qDebug() << text.split("/").back();
 
-    file.close();
-    if (ret == -1)
-        emit this->signal_peer_close();
-
+    m_pMutex->lock();
+    m_tasklist.push_back(s);
+    m_pMutex->unlock();
 }
 
-/* 接受文件 */
+
 void TransferFile::slot_recv_file()
 {
-
     QString recv(m_pSocket->readAll());
     QList<QString> msgs = recv.split(";");
     msgs.pop_back();
@@ -201,22 +174,127 @@ void TransferFile::slot_recv_file()
         QList<QString> onemsg = msgs.front().split(":");
         msgs.pop_front();
         QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
-        if (m_openfiles.find(file) == m_openfiles.end())
-        {/* 如果该文件还没创建,则创建并保存 */
-            QFile* fd = new QFile(QString("./tmp/")+file);
-            fd->open(QFile::WriteOnly);
-            m_openfiles[file] = fd;
+
+        if (!m_recv_file)
+        {
+            m_recv_file_name = file;
+            QString str("./tmp/");
+            str.append(file);
+            m_recv_file = fopen(str.toStdString().c_str(), "a");
+            if (!m_recv_file)
+            {
+                QMessageBox::information(nullptr, "错误", "打开文件错误，请重启");
+                exit(0);
+            }
         }
 
-        m_openfiles[file]->write(QByteArray::fromBase64(onemsg[1].toLatin1()));
-        if (msgs.size() == 3)
+        QString text = QByteArray::fromBase64(onemsg[1].toLatin1());
+        fwrite(text.toStdString().c_str(),1,text.length(),m_recv_file);
+
+        if (onemsg.size() == 3)
         {/* 说明文件传输完成 */
-            QFile* tmp = m_openfiles[file];
-            m_openfiles.remove(file);
-            tmp->close();
-            delete tmp;
-            emit this->signal_recv_file_success(file);
+            fflush(m_recv_file);
+            fclose(m_recv_file);
+            m_recv_file = nullptr;
+            emit this->signal_recv_file_success(m_recv_file_name);
         }
     }
 }
+
+void TransferFile::slot_send_file()
+{
+    if (!m_pSocket)
+        return;
+
+    if (m_send_file)
+    {/* 有一个正在发送的文件,分4次,每次1024byte */
+        for (int i = 0; i < 4; ++i)
+        {
+            char buffer[1024];
+            size_t size = fread(buffer,1,1023,m_send_file);
+            buffer[size] = '\0';
+            QString text(buffer);
+            QString fn_base = m_send_file_name.toUtf8().toBase64();
+            int ret;
+            if (size < 1023)                                    /* 文件读取完毕 */
+            {
+                QString data(fn_base + ':'
+                             + text.toUtf8().toBase64() + ':'
+                             + END.toUtf8().toBase64() + ';');
+                ret = m_pSocket->write(data.toLatin1());
+                if (ret < 0)
+                {/* 对端出错 */
+                    /* 清空信息 */
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    m_tasklist.clear();
+                    m_files.clear();
+                    delete m_pMutex;
+                    m_pSendTimer->stop();
+                    delete m_pSendTimer;
+                    if (m_recv_file)
+                    {
+                        fclose(m_recv_file);
+                        m_recv_file = nullptr;
+                    }
+                    emit this->signal_peer_close();
+
+                }
+                else if ((size_t)ret < size)
+                {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
+                    fseek(m_send_file,-(size-ret),SEEK_CUR);
+                    break;
+                }
+                else/* 写完 */
+                {
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    break;
+                }
+            }
+            else                                                /* 文件未读取完 */
+            {
+                QString data(fn_base + ':' + text.toUtf8().toBase64() + ';');
+                ret = m_pSocket->write(data.toLatin1());
+                if (ret < 0)
+                {/* 对端出错 */
+                    emit this->signal_peer_close();
+                    /* 清空信息 */
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    m_tasklist.clear();
+                    m_files.clear();
+                    delete m_pMutex;
+                    m_pSendTimer->stop();
+                    delete m_pSendTimer;
+                    if (m_recv_file)
+                    {
+                        fclose(m_recv_file);
+                        m_recv_file = nullptr;
+                    }
+                }
+                else if ((size_t)ret < size)
+                {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
+                    fseek(m_send_file,-(size-ret),SEEK_CUR);
+                    break;
+                }
+            }
+        }
+
+    }
+    else if (!m_tasklist.isEmpty())
+    {/* 没有正在发的文件，但任务列表有需要发的文件 */
+        m_pMutex->lock();
+        Source s = m_tasklist.front();
+        m_tasklist.pop_front();
+        m_pMutex->unlock();
+        /* 新建发送的文件 */
+        m_send_file = fopen(s.filepath.toStdString().c_str(), "r");
+        m_send_file_name = s.transname;
+    }
+
+}
+
+
+
 

@@ -137,6 +137,14 @@ void MainWindow::__Init()
         ui->BTN_FILE->setStyleSheet(str);
         ui->BTN_SHAKE->setStyleSheet(str);
 
+        QFile fcom("./qss/combobox.qss");
+        fcom.open(QFile::ReadOnly);
+        str = fcom.readAll();
+        qDebug() << str;
+        fcom.close();
+        ui->COMBO_DOWN_FILE_LIST->setStyleSheet(str);
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdad"));
+
         this->setWindowFlags(Qt::FramelessWindowHint );//无边框
         /* 设置阴影必须带上这一句 */
         this->setAttribute(Qt::WA_TranslucentBackground);
@@ -156,15 +164,13 @@ void MainWindow::__Init()
     m_pTextChat = new TextChat;
     m_pTextChat->SetFindTerminal(m_pFindTerminal);
 
-//    m_pFileChat = new TransferFile(this);
-//    m_pFileChat->start();
-//    m_pPicChat = new TransferPic(this);
-//    m_pPicChat->start();
 
-//    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
-//            m_pFileChat, SLOT(slot_create_socket(const QHostAddress&)));
-//    connect(this, SIGNAL(signal_create_socket(const QHostAddress&)),
-//            m_pPicChat, SLOT(slot_create_socket(const QHostAddress&)));
+    /* 文件服务开始监听 */
+    qDebug() << "before start";
+    m_pFileServer = new MyFileThread_Server(this);
+    m_pFileServer->start();
+    m_pFileClient = nullptr;
+    qDebug() << "after start";
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
@@ -315,6 +321,17 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     /* create file , picture socket */
     //emit this->signal_create_socket(QHostAddress(QString(ip)));
 
+    if (!m_pFileClient)
+    {
+        m_pFileClient = new MyFileThread_Client(this, QHostAddress(QString(ip)));
+    }
+    else
+    {
+        delete m_pFileClient;
+        m_pFileClient = new MyFileThread_Client(this, QHostAddress(QString(ip)));
+    }
+    m_pFileClient->start();
+
     /* 建立三个必须的连接连接 */
     bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
     if (!b)
@@ -357,6 +374,19 @@ void MainWindow::on_BTN_SEND_clicked()
 void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 {
     m_pTextChat->Close();
+
+    if (m_pFileClient)
+    {
+        m_pFileClient->exit();
+        delete m_pFileClient;
+        m_pFileClient = nullptr;
+    }
+    if (m_pFileServer)
+    {
+        m_pFileServer->exit();
+        m_pFileServer->start();
+    }
+
 //    m_pFileChat->stop();
 //    m_pPicChat->stop();
 
@@ -434,12 +464,15 @@ void MainWindow::on_BTN_FILE_clicked()
     fd->close();
     qDebug() << fileNameList;
 
-//    foreach (QString path, fileNameList) {
-//       m_pFileChat->Append(path);
-//    }
-//    ui->TEXT_MSG_RECORD->setHtml(
-//                ui->TEXT_MSG_RECORD->toHtml()
-//                + html);
+
+    QString html;
+    foreach (QString path, fileNameList) {
+        emit this->signal_append_task(path);
+        html += TEXT_FRONT.arg(RIGHT,FONT,TEXT_COLOR_3,FONT_SIZE)+"我发送了文件["+ path+"]"+TEXT_BACK;
+    }
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
@@ -455,6 +488,19 @@ void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     m_pTextChat->Close();
+
+    if (m_pFileServer)
+    {
+        m_pFileServer->exit();
+        delete m_pFileServer;
+        m_pFileServer = nullptr;
+    }
+    if (m_pFileClient)
+    {
+        m_pFileClient->exit();
+        delete m_pFileClient;
+        m_pFileClient = nullptr;
+    }
 //    m_pFileChat->stop();
 //    m_pPicChat->stop();
     this->close();
@@ -559,6 +605,19 @@ void MainWindow::slot_peer_close()
 {
 //    m_pPicChat->stop();
 //    m_pFileChat->stop();
+
+    if (m_pFileClient)
+    {
+        m_pFileClient->exit();
+        delete m_pFileClient;
+        m_pFileClient = nullptr;
+    }
+    if (m_pFileServer)
+    {
+        m_pFileServer->exit();
+        m_pFileServer->start();
+    }
+
     QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
@@ -610,6 +669,15 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
                                                              QMessageBox::StandardButton::Yes
                                                              | QMessageBox::StandardButton::No);
     btn = b;
+
+    if (b == QMessageBox::StandardButton::No)
+    {
+        if (m_pFileServer)
+        {
+            m_pFileServer->exit();
+            m_pFileServer->start();
+        }
+    }
 }
 
 
@@ -632,6 +700,13 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->LIST_HOST->setEnabled(false);
 //        m_pFileChat->stop();
 //        m_pPicChat->stop();
+
+        if (m_pFileClient)
+        {
+            m_pFileClient->exit();
+            delete m_pFileClient;
+            m_pFileClient = nullptr;
+        }
     }
 }
 
@@ -645,6 +720,17 @@ void MainWindow::slot_send_error()
 //    m_pPicChat->stop();
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
+    if (m_pFileClient)
+    {
+        m_pFileClient->exit();
+        delete m_pFileClient;
+        m_pFileClient = nullptr;
+    }
+    if (m_pFileServer)
+    {
+        m_pFileServer->exit();
+        m_pFileServer->start();
+    }
 }
 
 
@@ -697,6 +783,12 @@ void MainWindow::slot_shake_window()
 void MainWindow::slot_recv_file_success(const QString& file)
 {
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
+    QString html;
+    html += TEXT_FRONT.arg(LEFT,FONT,TEXT_COLOR_3,FONT_SIZE)+"对方发送了文件["+ file+"]"+TEXT_BACK;
+
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
 }
 
 void MainWindow::slot_recv_picture_success(const QString& file)

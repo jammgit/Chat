@@ -64,7 +64,7 @@ typedef struct
  * Base64编码解决了问题  */
 
 #define PICTURE_SERVER_PORT 8887
-#define FILE_SERVER_PORT 8886
+#define FILE_SERVER_PORT    8886
 
 
 #endif // MSGTYPE_H

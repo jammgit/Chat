@@ -11,6 +11,9 @@
 #include <QDebug>
 #include <QMap>
 #include <QHash>
+#include <QMenu>
+#include <QAction>
+#include <QContextMenuEvent>
 
 class MyExTextEdit : public QTextEdit
 {
@@ -21,6 +24,9 @@ public:
 
 private slots:
     void slot_animate(int a);
+
+protected:
+    void contextMenuEvent(QContextMenuEvent *e);
 
 private:
     QList<QMovie *> lstMovie;
