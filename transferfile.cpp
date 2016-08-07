@@ -27,8 +27,8 @@ void MyFileThread_Client::run()
     connect(m_pFileSrv, SIGNAL(signal_recv_file_success(QString)),
             m_pWin, SLOT(slot_recv_file_success(QString)));
     /* 主线程添加一个任务 */
-    connect(m_pWin, SIGNAL(signal_append_task(const QString& )),
-            m_pFileSrv, SLOT(slot_append_task(const QString& )));
+    connect(m_pWin, SIGNAL(signal_append_file_task(const QString& )),
+            m_pFileSrv, SLOT(slot_append_file_task(const QString& )));
     /* 线程结束 */
     connect(this, SIGNAL(finished()), this, SLOT(slot_finished()));
 
@@ -101,13 +101,19 @@ void MyFileThread_Server::slot_new_connection()
         connect(m_pFileSrv, SIGNAL(signal_recv_file_success(QString)),
                 m_pWin, SLOT(slot_recv_file_success(QString)));
         /* 主线程添加一个任务 */
-        connect(m_pWin, SIGNAL(signal_append_task(const QString&)),
-                m_pFileSrv, SLOT(slot_append_task(const QString&)));
+        connect(m_pWin, SIGNAL(signal_append_file_task(const QString&)),
+                m_pFileSrv, SLOT(slot_append_file_task(const QString&)));
     }
 }
 
 void MyFileThread_Server::slot_finished()
 {/* 不需要关闭监听套接字 */
+//    if (m_pListen)
+//    {
+//        m_pListen->close();
+//        delete m_pListen;
+//        m_pListen = nullptr;
+//    }
     if (m_pSocket)
     {
         m_pSocket->close();
@@ -139,7 +145,7 @@ TransferFile::TransferFile(QTcpSocket*socket, QObject *parent)
 
 
 /* 添加任务 */
-void TransferFile::slot_append_task(const QString &filepath)
+void TransferFile::slot_append_file_task(const QString &filepath)
 {
     Source s;
     s.filepath = filepath;
@@ -173,6 +179,7 @@ void TransferFile::slot_recv_file()
     {
         QList<QString> onemsg = msgs.front().split(":");
         msgs.pop_front();
+
         QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
 
         if (!m_recv_file)
@@ -180,7 +187,7 @@ void TransferFile::slot_recv_file()
             m_recv_file_name = file;
             QString str("./tmp/");
             str.append(file);
-            m_recv_file = fopen(str.toStdString().c_str(), "a");
+            m_recv_file = fopen(str.toStdString().c_str(), "wb");
             if (!m_recv_file)
             {
                 QMessageBox::information(nullptr, "错误", "打开文件错误，请重启");
@@ -189,6 +196,7 @@ void TransferFile::slot_recv_file()
         }
 
         QString text = QByteArray::fromBase64(onemsg[1].toLatin1());
+
         fwrite(text.toStdString().c_str(),1,text.length(),m_recv_file);
 
         if (onemsg.size() == 3)
@@ -199,6 +207,8 @@ void TransferFile::slot_recv_file()
             emit this->signal_recv_file_success(m_recv_file_name);
         }
     }
+    if (m_recv_file)
+        fflush(m_recv_file);
 }
 
 void TransferFile::slot_send_file()
@@ -215,8 +225,9 @@ void TransferFile::slot_send_file()
             buffer[size] = '\0';
             QString text(buffer);
             QString fn_base = m_send_file_name.toUtf8().toBase64();
+
             int ret;
-            if (size < 1023)                                    /* 文件读取完毕 */
+            if (feof(m_send_file))                                    /* 文件读取完毕 */
             {
                 QString data(fn_base + ':'
                              + text.toUtf8().toBase64() + ':'
@@ -289,7 +300,7 @@ void TransferFile::slot_send_file()
         m_tasklist.pop_front();
         m_pMutex->unlock();
         /* 新建发送的文件 */
-        m_send_file = fopen(s.filepath.toStdString().c_str(), "r");
+        m_send_file = fopen(s.filepath.toStdString().c_str(), "rb");
         m_send_file_name = s.transname;
     }
 

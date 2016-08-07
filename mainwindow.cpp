@@ -140,7 +140,6 @@ void MainWindow::__Init()
         QFile fcom("./qss/combobox.qss");
         fcom.open(QFile::ReadOnly);
         str = fcom.readAll();
-        qDebug() << str;
         fcom.close();
         ui->COMBO_DOWN_FILE_LIST->setStyleSheet(str);
         ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdad"));
@@ -166,11 +165,13 @@ void MainWindow::__Init()
 
 
     /* 文件服务开始监听 */
-    qDebug() << "before start";
     m_pFileServer = new MyFileThread_Server(this);
     m_pFileServer->start();
     m_pFileClient = nullptr;
-    qDebug() << "after start";
+    /* 图片服务开始监听 */
+    m_pPicServer = new MyPictureThread_Server(this);
+    m_pPicServer->start();
+    m_pPicClient = nullptr;
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
@@ -332,6 +333,17 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     }
     m_pFileClient->start();
 
+    if (!m_pPicClient)
+    {
+        m_pPicClient = new MyPictureThread_Client(this, QHostAddress(QString(ip)));
+    }
+    else
+    {
+        delete m_pPicClient;
+        m_pPicClient = new MyPictureThread_Client(this, QHostAddress(QString(ip)));
+    }
+    m_pPicClient->start();
+
     /* 建立三个必须的连接连接 */
     bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
     if (!b)
@@ -387,6 +399,18 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
         m_pFileServer->start();
     }
 
+    if (m_pPicClient)
+    {
+        m_pPicClient->exit();
+        delete m_pPicClient;
+        m_pPicClient = nullptr;
+    }
+    if (m_pPicServer)
+    {
+        m_pPicServer->exit();
+        m_pPicServer->start();
+    }
+
 //    m_pFileChat->stop();
 //    m_pPicChat->stop();
 
@@ -424,13 +448,21 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     }
     fd->close();
     qDebug() << fileNameList;
-//    QString html;
-//    foreach (QString path, fileNameList) {
-//       m_pPicChat->Append(path);
-//    }
-//    ui->TEXT_MSG_RECORD->setHtml(
-//                ui->TEXT_MSG_RECORD->toHtml()
-//                + html);
+
+    QString html;
+    foreach (QString path, fileNameList) {
+        emit this->signal_append_picture_task(path);
+        QImage image(path);
+        html += PIC_HTML_STRING.arg(
+                RIGHT,
+                path,
+                QString::number(image.height()/(image.width()/200)),
+                QString::number(200));
+    }
+
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
@@ -467,7 +499,7 @@ void MainWindow::on_BTN_FILE_clicked()
 
     QString html;
     foreach (QString path, fileNameList) {
-        emit this->signal_append_task(path);
+        emit this->signal_append_file_task(path);
         html += TEXT_FRONT.arg(RIGHT,FONT,TEXT_COLOR_3,FONT_SIZE)+"我发送了文件["+ path+"]"+TEXT_BACK;
     }
     ui->TEXT_MSG_RECORD->setHtml(
@@ -794,6 +826,18 @@ void MainWindow::slot_recv_file_success(const QString& file)
 void MainWindow::slot_recv_picture_success(const QString& file)
 {
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
+
+    QImage image(QString("./tmp/") + file);
+
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + PIC_HTML_STRING.arg(
+                  LEFT,
+                  QString("./tmp/%1").arg(file),
+                  QString::number(image.height()/(image.width()/200)),
+                  QString::number(200))
+                );
+
 }
 
 

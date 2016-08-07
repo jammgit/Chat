@@ -102,7 +102,8 @@ public slots: /* --------------文本消息槽函数---------------- */
 
 signals:
     /* 主线程通知 */
-    void signal_append_task(const QString& filepath);
+    void signal_append_file_task(const QString& filepath);
+    void signal_append_picture_task(const QString& filepath);
 
 public slots: /* --------------视频信息槽函数---------------- */
 
@@ -127,7 +128,9 @@ private:
     MyFileThread_Client         * m_pFileClient;
     MyFileThread_Server         * m_pFileServer;
 
-
+    /**/
+    MyPictureThread_Client      * m_pPicClient;
+    MyPictureThread_Server      * m_pPicServer;
 
 };
 

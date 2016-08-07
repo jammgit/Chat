@@ -106,7 +106,7 @@ signals:
 
 public slots:
     /* 主线程通知 */
-    void slot_append_task(const QString& filepath);
+    void slot_append_file_task(const QString& filepath);
 
 
 

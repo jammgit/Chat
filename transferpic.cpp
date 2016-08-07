@@ -1,176 +1,176 @@
 #include "transferpic.h"
 
-TransferPic::TransferPic(QObject* pwin, QObject *parent)
-    : QThread(parent),m_pWin(pwin),m_pListen(nullptr),
-      m_pSocket(nullptr), m_stop(false),m_pMutex(new QMutex),
-      m_pSem(new QSemaphore),m_pForBlock(new QSemaphore)
+///////////////////////////////////////////////////////////////////////
+/// MyPictureThread_Client
+///////////////////////////////////////////////////////////////////////////
+MyPictureThread_Client::MyPictureThread_Client(QObject*pwin, const QHostAddress& addr, QObject *parent)
+    :QThread(parent),m_pSocket(nullptr),m_peer_addr(addr),m_pWin(pwin),m_pPicSrv(nullptr)
 {
-    connect(this, SIGNAL(signal_recv_picture_success(const QString&)),
-            pwin, SLOT(slot_recv_picture_success(const QString&)));
-    connect(this, SIGNAL(signal_peer_close()), pwin, SLOT(slot_peer_close()));
 
 }
 
-void TransferPic::slot_create_socket(const QHostAddress& addr)
+void MyPictureThread_Client::run()
 {
-    m_pSocket = new QTcpSocket;
-    m_pSocket->connectToHost(addr, PICTURE_SERVER_PORT);
-    if (m_pSocket->waitForConnected())
-    {
-        m_pSocket->moveToThread(this);
-        connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
-                Qt::DirectConnection);
-        qDebug() << "connect so";
-    }
-    else
-    {
-        qDebug() << "connect error";
-    }
-}
+    m_pSocket = new QTcpSocket();
 
-void TransferPic::slot_get_listen_socket()
-{
-    if (m_pListen->hasPendingConnections())
-    {
-        m_pSocket = m_pListen->nextPendingConnection();
-        if (!m_pSocket)
-        {
+    m_pSocket->connectToHost(m_peer_addr, PICTURE_SERVER_PORT);
+    if (!m_pSocket->waitForConnected())
+    {/* 未连接成功 */
 
-        }
-        else
-        {
-            qDebug() << "get connection";
-            connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
-                    Qt::DirectConnection);
-        }
-    }
-}
-
-void TransferPic::run()
-{
-    m_pListen = new QTcpServer;
-    if (!m_pListen)
-    {
-        QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
-        exit(0);
     }
 
-    if(!m_pListen->listen(QHostAddress::AnyIPv4, PICTURE_SERVER_PORT))
-    {
-        QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
-        exit(0);
-    }
-    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
-            Qt::DirectConnection);
-    connect(this, SIGNAL(signal_process()), this, SLOT(slot_process()),
-            Qt::QueuedConnection);
-    connect(this, SIGNAL(signal_stop()), this, SLOT(slot_stop()),
-            Qt::QueuedConnection);
-    connect(m_pWin, SIGNAL(signal_create_socket(const QHostAddress&)),
-            this, SLOT(slot_create_socket(const QHostAddress&)),
-            Qt::QueuedConnection);
-
+    m_pPicSrv = new TransferPic(m_pSocket);
+    /* 套接字可读信号 */
+    connect(m_pSocket, SIGNAL(readyRead()), m_pPicSrv, SLOT(slot_recv_file()));
+    /* 对端关闭、接受完一个文件信号 */
+    connect(m_pPicSrv, SIGNAL(signal_peer_close()), m_pWin, SLOT(slot_peer_close()));
+    connect(m_pPicSrv, SIGNAL(signal_recv_picture_success(QString)),
+            m_pWin, SLOT(slot_recv_picture_success(QString)));
+    /* 主线程添加一个任务 */
+    connect(m_pWin, SIGNAL(signal_append_picture_task(const QString& )),
+            m_pPicSrv, SLOT(slot_append_picture_task(const QString& )));
+    /* 线程结束 */
+    connect(this, SIGNAL(finished()), this, SLOT(slot_finished()));
 
     this->exec();
 }
 
-void TransferPic::Append(const QString &filename)
+void MyPictureThread_Client::slot_finished()
 {
-    qDebug() << "append";
+    if (m_pSocket)
+    {
+        m_pSocket->close();
+        delete m_pSocket;
+        m_pSocket = nullptr;
+    }
+    if (m_pPicSrv)
+    {
+        delete m_pPicSrv;
+        m_pPicSrv = nullptr;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+/// MyPictureThread_Server
+//////////////////////////////////////////////////////////////////////////////
+MyPictureThread_Server::MyPictureThread_Server(QObject*pwin, QObject* parent)
+    :QThread(parent),m_pListen(nullptr),m_pSocket(nullptr),
+      m_pWin(pwin),m_pPicSrv(nullptr)
+{
+
+}
+
+void MyPictureThread_Server::run()
+{
+    if (!m_pListen)
+    {
+        m_pListen = new QTcpServer();
+        if (!m_pListen)
+        {
+            QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
+            exit(0);
+        }
+
+        if(!m_pListen->listen(QHostAddress::AnyIPv4, PICTURE_SERVER_PORT))
+        {
+            QMessageBox::information(nullptr, "错误", "初始化网络出现错误");
+            exit(0);
+        }
+
+    }
+
+    connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_new_connection()));
+
+    connect(this, SIGNAL(finished()), this, SLOT(slot_finished()));
+
+    this->exec();
+}
+
+void MyPictureThread_Server::slot_new_connection()
+{
+    if (m_pListen->hasPendingConnections())
+    {
+        m_pSocket = m_pListen->nextPendingConnection();
+
+
+        m_pPicSrv = new TransferPic(m_pSocket);
+        /* 套接字可读信号 */
+        connect(m_pSocket, SIGNAL(readyRead()), m_pPicSrv, SLOT(slot_recv_file()));
+        /* 对端关闭、接受完一个文件信号 */
+        connect(m_pPicSrv, SIGNAL(signal_peer_close()), m_pWin, SLOT(slot_peer_close()));
+        connect(m_pPicSrv, SIGNAL(signal_recv_picture_success(QString)),
+                m_pWin, SLOT(slot_recv_picture_success(QString)));
+        /* 主线程添加一个任务 */
+        connect(m_pWin, SIGNAL(signal_append_picture_task(const QString&)),
+                m_pPicSrv, SLOT(slot_append_picture_task(const QString&)));
+    }
+}
+
+void MyPictureThread_Server::slot_finished()
+{/* 不需要关闭监听套接字 */
+//    if (m_pListen)
+//    {
+//        m_pListen->close();
+//        delete m_pListen;
+//        m_pListen = nullptr;
+//    }
+    if (m_pSocket)
+    {
+        m_pSocket->close();
+        delete m_pSocket;
+        m_pSocket = nullptr;
+    }
+    if (m_pPicSrv)
+    {
+        delete m_pPicSrv;
+        m_pPicSrv = nullptr;
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+/// TransferPic
+/// ///////////////////////////////////////////////////////////////////////////
+
+TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
+    : QObject(parent),m_pSocket(socket),m_pMutex(new QMutex),
+      m_send_file(nullptr),m_recv_file(nullptr)
+{
+
+    m_pSendTimer = new QTimer;
+    connect(m_pSendTimer, SIGNAL(timeout()), this, SLOT(slot_send_file()));
+    /* 每一秒检测一次是否有文件需要发送，有则发送一部分，避免阻塞 */
+    m_pSendTimer->start(1000);
+}
+
+
+/* 添加任务 */
+void TransferPic::slot_append_picture_task(const QString &filepath)
+{
     Source s;
-    s.filepath = filename;
-    //s.transname = transname;
-    m_pMutex->lock();
-    m_tasklist.push_back(s);
-    m_pMutex->unlock();
-    m_pSem->release();
-    emit this->signal_process();
-}
-
-void TransferPic::stop()
-{
-    emit this->signal_stop();
-}
-
-void TransferPic::slot_stop()
-{
-    m_stop = true;
-    m_pSocket->close();
-    delete m_pSocket;
-}
-
-/* 发送文件 */
-void TransferPic::slot_process()
-{
-    if (!m_pSocket)
-        return;
-
-    m_pSem->acquire();
-    Source source;
-    m_pMutex->lock();
-    source = m_tasklist.front();
-    m_tasklist.pop_front();
-    m_pMutex->unlock();
-
-    qDebug() << "Process one file";
-    qDebug() << m_pSocket;
-    /* */
-    QString text = source.filepath;
+    s.filepath = filepath;
+    QString text = filepath;
     if (m_files.find(text.split("/").back()) != m_files.end())
     {/* 如果存在同名文件,插入一个时间值做分辨 */
         int idx = text.lastIndexOf(".");
         text.insert(idx, QString("_%1").arg(QString(QDateTime::currentDateTime().toString().toInt())));
     }
-    source.transname = text;
+
+    s.transname = text.split("/").back();
     qDebug() << text.split("/").back();
     /* save */
-    m_files[text.split("/").back()] = source.filepath;
+    m_files[text.split("/").back()] = s.filepath;
 
-    QString base = source.transname.toUtf8().toBase64();
-    QFile file(source.filepath);
-    file.open(QFile::ReadOnly);
-    qint64 ret;
-    while (!file.atEnd() && !m_stop)
-    {
-        QString text(file.read(1024));
-        /* 非/二进制文件，故最好先utf8 */
-        if (text.length() < 1024)
-        {
-            QString data(base + ':'
-                         + END.toUtf8().toBase64() + ':'
-                         + text.toUtf8().toBase64() + ';');
-            ret = m_pSocket->write(data.toLatin1());
-            //qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
-            qDebug() << m_pSocket->error();
-            qDebug() << m_pSocket->errorString();
-            break;
-        }
-        else
-        {
-            QString data(base + ':' + text.toUtf8().toBase64() + ';');
-            ret = m_pSocket->write(data.toLatin1());
-            qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
-            qDebug() << m_pSocket->error();
-            qDebug() << m_pSocket->errorString();
-        }
-        if (ret == -1)
-        {
-            emit this->signal_peer_close();
-        }
-    }
+    qDebug() << text.split("/").back();
 
-    file.close();
-    if (ret == -1)
-        emit this->signal_peer_close();
-
-
+    m_pMutex->lock();
+    m_tasklist.push_back(s);
+    m_pMutex->unlock();
 }
 
-/* 接受图片 */
-void TransferPic::slot_recv_picture()
-{
 
-    qDebug() << "recv picture";
+void TransferPic::slot_recv_file()
+{
     QString recv(m_pSocket->readAll());
     QList<QString> msgs = recv.split(";");
     msgs.pop_back();
@@ -179,23 +179,129 @@ void TransferPic::slot_recv_picture()
     {
         QList<QString> onemsg = msgs.front().split(":");
         msgs.pop_front();
+
         QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
-        if (m_openpics.find(file) == m_openpics.end())
-        {/* 如果该文件还没创建,则创建并保存 */
-            QFile* fd = new QFile(QString("./tmp/")+file);
-            fd->open(QFile::WriteOnly);
-            m_openpics[file] = fd;
+
+        if (!m_recv_file)
+        {
+            m_recv_file_name = file;
+            QString str("./tmp/");
+            str.append(file);
+            m_recv_file = fopen(str.toStdString().c_str(), "wb");
+            if (!m_recv_file)
+            {
+                QMessageBox::information(nullptr, "错误", "打开文件错误，请重启");
+                exit(0);
+            }
         }
 
-        m_openpics[file]->write(QByteArray::fromBase64(onemsg[1].toLatin1()));
-        if (msgs.size() == 3)
-        {/* 说明文件传输完成 */
-            QFile* tmp = m_openpics[file];
-            m_openpics.remove(file);
-            tmp->close();
-            delete tmp;
+        QString text = QByteArray::fromBase64(onemsg[1].toLatin1());
 
-            emit this->signal_recv_picture_success(file);
+        fwrite(text.toStdString().c_str(),1,text.length(),m_recv_file);
+
+        if (onemsg.size() == 3)
+        {/* 说明文件传输完成 */
+            fflush(m_recv_file);
+            fclose(m_recv_file);
+            m_recv_file = nullptr;
+            emit this->signal_recv_picture_success(m_recv_file_name);
         }
     }
+    if (m_recv_file)
+        fflush(m_recv_file);
+}
+
+void TransferPic::slot_send_file()
+{
+    if (!m_pSocket)
+        return;
+
+    if (m_send_file)
+    {/* 有一个正在发送的文件,分4次,每次1024byte */
+        for (int i = 0; i < 4; ++i)
+        {
+            char buffer[1024];
+            size_t size = fread(buffer,1,1023,m_send_file);
+            buffer[size] = '\0';
+            QString text(buffer);
+            QString fn_base = m_send_file_name.toUtf8().toBase64();
+
+            int ret;
+            if (feof(m_send_file))                                    /* 文件读取完毕 */
+            {
+                QString data(fn_base + ':'
+                             + text.toUtf8().toBase64() + ':'
+                             + END.toUtf8().toBase64() + ';');
+                ret = m_pSocket->write(data.toLatin1());
+                if (ret < 0)
+                {/* 对端出错 */
+                    /* 清空信息 */
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    m_tasklist.clear();
+                    m_files.clear();
+                    delete m_pMutex;
+                    m_pSendTimer->stop();
+                    delete m_pSendTimer;
+                    if (m_recv_file)
+                    {
+                        fclose(m_recv_file);
+                        m_recv_file = nullptr;
+                    }
+                    emit this->signal_peer_close();
+
+                }
+                else if ((size_t)ret < size)
+                {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
+                    fseek(m_send_file,-(size-ret),SEEK_CUR);
+                    break;
+                }
+                else/* 写完 */
+                {
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    break;
+                }
+            }
+            else                                                /* 文件未读取完 */
+            {
+                QString data(fn_base + ':' + text.toUtf8().toBase64() + ';');
+                ret = m_pSocket->write(data.toLatin1());
+                if (ret < 0)
+                {/* 对端出错 */
+                    emit this->signal_peer_close();
+                    /* 清空信息 */
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    m_tasklist.clear();
+                    m_files.clear();
+                    delete m_pMutex;
+                    m_pSendTimer->stop();
+                    delete m_pSendTimer;
+                    if (m_recv_file)
+                    {
+                        fclose(m_recv_file);
+                        m_recv_file = nullptr;
+                    }
+                }
+                else if ((size_t)ret < size)
+                {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
+                    fseek(m_send_file,-(size-ret),SEEK_CUR);
+                    break;
+                }
+            }
+        }
+
+    }
+    else if (!m_tasklist.isEmpty())
+    {/* 没有正在发的文件，但任务列表有需要发的文件 */
+        m_pMutex->lock();
+        Source s = m_tasklist.front();
+        m_tasklist.pop_front();
+        m_pMutex->unlock();
+        /* 新建发送的文件 */
+        m_send_file = fopen(s.filepath.toStdString().c_str(), "rb");
+        m_send_file_name = s.transname;
+    }
+
 }
