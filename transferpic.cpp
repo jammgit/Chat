@@ -8,20 +8,42 @@ TransferPic::TransferPic(QObject* pwin, QObject *parent)
     connect(this, SIGNAL(signal_recv_picture_success(const QString&)),
             pwin, SLOT(slot_recv_picture_success(const QString&)));
     connect(this, SIGNAL(signal_peer_close()), pwin, SLOT(slot_peer_close()));
+
 }
 
 void TransferPic::slot_create_socket(const QHostAddress& addr)
 {
-    m_addr = addr;
-    m_is_get_socket_from_listen = false;
-    m_pForBlock->release();
+    m_pSocket = new QTcpSocket;
+    m_pSocket->connectToHost(addr, PICTURE_SERVER_PORT);
+    if (m_pSocket->waitForConnected())
+    {
+        m_pSocket->moveToThread(this);
+        connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
+                Qt::DirectConnection);
+        qDebug() << "connect so";
+    }
+    else
+    {
+        qDebug() << "connect error";
+    }
 }
 
 void TransferPic::slot_get_listen_socket()
 {
-    qDebug() << "get listen socket";
-    m_is_get_socket_from_listen = true;
-    m_pForBlock->release();
+    if (m_pListen->hasPendingConnections())
+    {
+        m_pSocket = m_pListen->nextPendingConnection();
+        if (!m_pSocket)
+        {
+
+        }
+        else
+        {
+            qDebug() << "get connection";
+            connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
+                    Qt::DirectConnection);
+        }
+    }
 }
 
 void TransferPic::run()
@@ -40,71 +62,16 @@ void TransferPic::run()
     }
     connect(m_pListen, SIGNAL(newConnection()), this, SLOT(slot_get_listen_socket()),
             Qt::DirectConnection);
-    /* block */
-    while (true)
-    {
-        qDebug() << "thread in acquire";
-        m_pForBlock->acquire();
-        if (m_is_get_socket_from_listen)
-        {
-            qDebug() << "is true";
-            if (m_pListen->hasPendingConnections())
-            {
-                m_pSocket = m_pListen->nextPendingConnection();
-                if (!m_pSocket)
-                {
+    connect(this, SIGNAL(signal_process()), this, SLOT(slot_process()),
+            Qt::QueuedConnection);
+    connect(this, SIGNAL(signal_stop()), this, SLOT(slot_stop()),
+            Qt::QueuedConnection);
+    connect(m_pWin, SIGNAL(signal_create_socket(const QHostAddress&)),
+            this, SLOT(slot_create_socket(const QHostAddress&)),
+            Qt::QueuedConnection);
 
-                }
-                else
-                {
-                    qDebug() << "get connection";
-                    connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
-                            Qt::DirectConnection);
-                }
-            }
-        }
-        else
-        {
-            qDebug() << "connect so";
-            m_pSocket = new QTcpSocket;
-            m_pSocket->connectToHost(m_addr, PICTURE_SERVER_PORT);
-            if (m_pSocket->waitForConnected())
-            {
-                connect(m_pSocket, SIGNAL(readyRead()), this, SLOT(slot_recv_picture()),
-                        Qt::DirectConnection);
-            }
-            else
-            {
 
-            }
-        }
-
-        while (!m_stop)
-        {
-            qDebug() << "acquire";
-            m_thread_is_in_acquire = true;
-            m_pSem->acquire();
-            m_thread_is_in_acquire = false;
-            qDebug() << "Process one picture";
-            //m_pMutex->lock();
-            if (m_pMutex->tryLock(1000))           // just wait 3 seconds(for close session)
-            {
-                Source file = m_tasklist.front();
-                m_tasklist.pop_front();
-                m_pMutex->unlock();
-                /* 开始读取文件并发送,实例类必须实现Process函数 */
-                this->Process(file);
-            }
-            else
-            {/* slient close session:see TransferFile::stop function */
-                m_pMutex->unlock();
-            }
-        }
-        /* when close session */
-        m_pSocket->close();
-        delete m_pSocket;
-        m_stop = false;
-    }
+    this->exec();
 }
 
 void TransferPic::Append(const QString &filename)
@@ -117,26 +84,36 @@ void TransferPic::Append(const QString &filename)
     m_tasklist.push_back(s);
     m_pMutex->unlock();
     m_pSem->release();
+    emit this->signal_process();
 }
 
 void TransferPic::stop()
 {
-    m_stop = true;
-    if (m_thread_is_in_acquire)
-    {/* thread is in acquire */
-        m_pMutex->lock();
-        m_pSem->release();
-    }
+    emit this->signal_stop();
 }
 
-
-/* 发送图片 */
-void TransferPic::Process(Source& source)
+void TransferPic::slot_stop()
 {
+    m_stop = true;
+    m_pSocket->close();
+    delete m_pSocket;
+}
 
+/* 发送文件 */
+void TransferPic::slot_process()
+{
     if (!m_pSocket)
         return;
 
+    m_pSem->acquire();
+    Source source;
+    m_pMutex->lock();
+    source = m_tasklist.front();
+    m_tasklist.pop_front();
+    m_pMutex->unlock();
+
+    qDebug() << "Process one file";
+    qDebug() << m_pSocket;
     /* */
     QString text = source.filepath;
     if (m_files.find(text.split("/").back()) != m_files.end())
@@ -156,10 +133,6 @@ void TransferPic::Process(Source& source)
     while (!file.atEnd() && !m_stop)
     {
         QString text(file.read(1024));
-        if (text.isEmpty())
-        {
-            qDebug() << "file empty";
-        }
         /* 非/二进制文件，故最好先utf8 */
         if (text.length() < 1024)
         {
@@ -167,7 +140,7 @@ void TransferPic::Process(Source& source)
                          + END.toUtf8().toBase64() + ':'
                          + text.toUtf8().toBase64() + ';');
             ret = m_pSocket->write(data.toLatin1());
-            qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
+            //qDebug() << QString("send[%1]bytes").arg(QString::number(ret));
             qDebug() << m_pSocket->error();
             qDebug() << m_pSocket->errorString();
             break;
@@ -185,14 +158,12 @@ void TransferPic::Process(Source& source)
             emit this->signal_peer_close();
         }
     }
-    file.close();
 
+    file.close();
     if (ret == -1)
-    {
-        qDebug() << "send error";
         emit this->signal_peer_close();
-    }
-    qDebug() << "Send finished";
+
+
 }
 
 /* 接受图片 */

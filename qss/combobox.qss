@@ -38,9 +38,6 @@ QComboBox::drop-down {
 	border-bottom-right-radius:3px;
 }
 
-QComboBox::down-arrow {
-	image: url(:/qssimage/arrowbuttom.png);
-}
 
 QComboBox::down-arrow:on {
 	top:1px;

@@ -83,6 +83,18 @@ public:
     explicit TransferFile(QTcpSocket* socket,QObject *parent = 0);
     ~TransferFile()
     {
+        if (m_pSendTimer)
+            delete m_pSendTimer;
+        if (m_pMutex)
+        {
+            qDebug() << "a";
+            delete m_pMutex;
+            qDebug() << "a";
+        }
+        if (m_send_file)
+            fclose(m_send_file);
+        if (m_recv_file)
+            fclose(m_recv_file);
 
     }
 

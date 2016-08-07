@@ -137,6 +137,14 @@ void MainWindow::__Init()
         ui->BTN_FILE->setStyleSheet(str);
         ui->BTN_SHAKE->setStyleSheet(str);
 
+        QFile fcom("./qss/combobox.qss");
+        fcom.open(QFile::ReadOnly);
+        str = fcom.readAll();
+        qDebug() << str;
+        fcom.close();
+        ui->COMBO_DOWN_FILE_LIST->setStyleSheet(str);
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdad"));
+
         this->setWindowFlags(Qt::FramelessWindowHint );//无边框
         /* 设置阴影必须带上这一句 */
         this->setAttribute(Qt::WA_TranslucentBackground);
@@ -157,9 +165,11 @@ void MainWindow::__Init()
     m_pTextChat->SetFindTerminal(m_pFindTerminal);
 
     /* 文件服务开始监听 */
+    qDebug() << "before start";
     m_pFileServer = new MyFileThread_Server(this);
     m_pFileServer->start();
     m_pFileClient = nullptr;
+    qDebug() << "after start";
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
@@ -361,11 +371,17 @@ void MainWindow::on_BTN_SEND_clicked()
 void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 {
     m_pTextChat->Close();
-    m_pFileClient->exit();
-    delete m_pFileClient;
-    m_pFileClient = nullptr;
-    m_pFileServer->exit();
-    m_pFileServer->start();
+    if (m_pFileClient)
+    {
+        m_pFileClient->exit();
+        delete m_pFileClient;
+        m_pFileClient = nullptr;
+    }
+    if (m_pFileServer)
+    {
+        m_pFileServer->exit();
+        m_pFileServer->start();
+    }
 
 //    m_pFileChat->stop();
 //    m_pPicChat->stop();
@@ -444,12 +460,14 @@ void MainWindow::on_BTN_FILE_clicked()
     fd->close();
     qDebug() << fileNameList;
 
+    QString html;
     foreach (QString path, fileNameList) {
         emit this->signal_append_task(path);
+        html += TEXT_FRONT.arg(RIGHT,FONT,TEXT_COLOR_3,FONT_SIZE)+"我发送了文件["+ path+"]"+TEXT_BACK;
     }
-//    ui->TEXT_MSG_RECORD->setHtml(
-//                ui->TEXT_MSG_RECORD->toHtml()
-//                + html);
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
     /* 设置滚动条置底 */
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
@@ -647,8 +665,11 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
 
     if (b == QMessageBox::StandardButton::No)
     {
-        m_pFileServer->exit();
-        m_pFileServer->start();
+        if (m_pFileServer)
+        {
+            m_pFileServer->exit();
+            m_pFileServer->start();
+        }
     }
 }
 
@@ -672,9 +693,12 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->LIST_HOST->setEnabled(false);
 //        m_pFileChat->stop();
 //        m_pPicChat->stop();
-        m_pFileClient->exit();
-        delete m_pFileClient;
-        m_pFileClient = nullptr;
+        if (m_pFileClient)
+        {
+            m_pFileClient->exit();
+            delete m_pFileClient;
+            m_pFileClient = nullptr;
+        }
     }
 }
 
@@ -751,6 +775,12 @@ void MainWindow::slot_shake_window()
 void MainWindow::slot_recv_file_success(const QString& file)
 {
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
+    QString html;
+    html += TEXT_FRONT.arg(LEFT,FONT,TEXT_COLOR_3,FONT_SIZE)+"对方发送了文件["+ file+"]"+TEXT_BACK;
+
+    ui->TEXT_MSG_RECORD->setHtml(
+                ui->TEXT_MSG_RECORD->toHtml()
+                + html);
 }
 
 void MainWindow::slot_recv_picture_success(const QString& file)
