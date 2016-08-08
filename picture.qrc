@@ -25,5 +25,7 @@
         <file>src/emoji.png</file>
         <file>src/file.png</file>
         <file>src/shake.png</file>
+        <file>src/close_2.png</file>
+        <file>src/min_3.png</file>
     </qresource>
 </RCC>

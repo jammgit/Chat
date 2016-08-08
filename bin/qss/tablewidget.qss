@@ -1,0 +1,2 @@
+QTableWidget:hover{background-color:white; color: black;}
+QTableWidget:pressed{background-color:rgb(85, 170, 255);border-style:inset;}

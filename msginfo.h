@@ -65,6 +65,7 @@ typedef struct
 
 #define PICTURE_SERVER_PORT 8887
 #define FILE_SERVER_PORT    8886
+#define VIDEO_SERVER_PORT   8885
 
 
 #endif // MSGTYPE_H

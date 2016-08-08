@@ -5,12 +5,13 @@
 #-------------------------------------------------
 
 QT       += core gui
+
+greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 QT += network
 CONFIG += c++11
 QT += multimedia
 QT += core
 QT += multimediawidgets
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 TARGET = Chat
 TEMPLATE = app
@@ -35,6 +36,19 @@ HEADERS  += mainwindow.h \
     myextextedit.h \
     transferfile.h \
     transferpic.h
+
+INCLUDEPATH +=  ffmpeg/include
+INCLUDEPATH +=  x264/include
+
+LIBS += ./ffmpeg/lib/libavcodec.dll.a \
+        ./ffmpeg/lib/libavfilter.dll.a \
+        ./ffmpeg/lib/libavformat.dll.a \
+        ./ffmpeg/lib/libswscale.dll.a \
+        ./ffmpeg/lib/libavutil.dll.a \
+
+LIBS += ./x264/lib/libx264.dll.a
+
+DESTDIR=bin
 
 FORMS    += mainwindow.ui
 

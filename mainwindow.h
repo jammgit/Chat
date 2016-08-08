@@ -5,6 +5,7 @@
 #include <QMouseEvent>
 #include <QPainter>
 #include <QFileDialog>
+#include <QLineEdit>
 #include <QScrollBar>
 #include <QtMath>
 #include <QGraphicsDropShadowEffect>
@@ -15,6 +16,8 @@
 #include <QDateTime>
 #include <QTextEdit>
 #include <QImage>
+#include <QCamera>
+#include <QVideoWidget>
 
 #include "findterminal.h"
 #include "textchat.h"
@@ -22,6 +25,7 @@
 #include "myextextedit.h"
 #include "transferfile.h"
 #include "transferpic.h"
+#include "videodisplay.h"
 
 /*  SIGNAL/SLOT理解：
  *      signal（int a, char &b, string * c）
@@ -100,6 +104,8 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_recv_file_success(const QString& file);
     void slot_recv_picture_success(const QString& file);
 
+    void slot_get_image(const QImage& image);
+
 signals:
     /* 主线程通知 */
     void signal_append_file_task(const QString& filepath);
@@ -131,6 +137,9 @@ private:
     /**/
     MyPictureThread_Client      * m_pPicClient;
     MyPictureThread_Server      * m_pPicServer;
+
+    MyVideo_Send_Thread         * m_pVideoSend;
+    MyVideo_Recv_Thread         * m_pVideoRecv;
 
 };
 

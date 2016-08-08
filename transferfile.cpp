@@ -179,6 +179,10 @@ void TransferFile::slot_recv_file()
     {
         QList<QString> onemsg = msgs.front().split(":");
         msgs.pop_front();
+        if (onemsg.size()<2)
+        {
+            continue;
+        }
 
         QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
 
@@ -253,7 +257,7 @@ void TransferFile::slot_send_file()
                 }
                 else if ((size_t)ret < size)
                 {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
-                    fseek(m_send_file,-(size-ret),SEEK_CUR);
+                    fseek(m_send_file,-size,SEEK_CUR);
                     break;
                 }
                 else/* 写完 */

@@ -27,6 +27,10 @@ void MainWindow::__Init()
         /* set border */
         //ui->LABEL_SELF->setFrameShape (QFrame::Box);
         //ui->LABEL_OTHER->setFrameShape (QFrame::Box);
+        QPalette palabel;
+        palabel.setColor(QPalette::WindowText,QColor(51,204,255));
+        ui->label->setPalette(palabel);
+
         ui->LABEL_SELF->setStyleSheet("border: 1px solid  #000000");
         ui->LABEL_OTHER->setStyleSheet("border: 1px solid  #000000");
 
@@ -141,14 +145,21 @@ void MainWindow::__Init()
         fcom.open(QFile::ReadOnly);
         str = fcom.readAll();
         fcom.close();
-        ui->COMBO_DOWN_FILE_LIST->setStyleSheet(str);
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdad"));
+        ui->COMBO_DOWN_FILE_LIST->setStyleSheet("QComboBox {background-color:transparent;} "
+                                                " QToolTip {background-color:white;color:black;} ");
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdvcbvcbvcbvcbcad"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdsaad"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("哈哈"));
+
+        ui->COMBO_DOWN_FILE_LIST->setLineEdit(ui->LINE_COMBO);
+        ui->COMBO_DOWN_FILE_LIST->lineEdit()->setStyleSheet("QLineEdit {background-color:transparent;} ");
+
 
         this->setWindowFlags(Qt::FramelessWindowHint );//无边框
         /* 设置阴影必须带上这一句 */
-        this->setAttribute(Qt::WA_TranslucentBackground);
+        //this->setAttribute(Qt::WA_TranslucentBackground);
         /* 直接使用资源文件的资源，路径则为... */
-        this->setStyleSheet("QMainWindow{background-image: url(:/src/bg_4.png)}");
+        this->setStyleSheet("QMainWindow{background-image: url(:/src/bg_4.png); border: 1px solid  #1e90ff}");
         //ui->pushButton->setStyleSheet("QPushButton{border-radius:5px;border-width:0px;}");           设置透明
     }
     /* 没TIME_DISPLAY_SPACE秒显示一次时间 */
@@ -172,6 +183,15 @@ void MainWindow::__Init()
     m_pPicServer = new MyPictureThread_Server(this);
     m_pPicServer->start();
     m_pPicClient = nullptr;
+
+    /* 视频:发送(服务端) */
+    QVideoWidget *w = new QVideoWidget(ui->LABEL_SELF);
+    w->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
+    m_pVideoSend = new MyVideo_Send_Thread(w,this);
+    m_pVideoSend->start();
+    m_pVideoRecv = nullptr;
+    /* 视频:接受是主动连接端，在主动连接时再创建 */
+
 
     /* 初始化文本聊天相关的connect */
     connect(m_pTextChat, SIGNAL(signal_request_result(bool, const chat_host_t&)),
@@ -262,28 +282,28 @@ bool MainWindow::eventFilter(QObject *obj, QEvent *e)
 }
 
 /* 画阴影 */
-void MainWindow::paintEvent(QPaintEvent *event)
+void MainWindow::paintEvent(QPaintEvent *)
 {
-    event = event;
-    QPainterPath path;
-    path.setFillRule(Qt::WindingFill);
-    path.addRect(10, 10, this->width()-20, this->height()-20);
+//    event = event;
+//    QPainterPath path;
+//    path.setFillRule(Qt::WindingFill);
+//    path.addRect(10, 10, this->width()-20, this->height()-20);
 
-    QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing, true);
-    /* 此图像应放在build文件夹的子文件夹src里 */
-    painter.fillPath(path, QBrush(QPixmap("src/bg_4.png")));
+//    QPainter painter(this);
+//    painter.setRenderHint(QPainter::Antialiasing, true);
+//    /* 此图像应放在build文件夹的子文件夹src里 */
+//    painter.fillPath(path, QBrush(QPixmap("src/bg_4.png")));
 
-    QColor color(0, 0, 0, 50);
-    for(int i=0; i<10; i++)
-    {
-        QPainterPath path;
-        path.setFillRule(Qt::WindingFill);
-        path.addRect(10-i, 10-i, this->width()-(10-i)*2, this->height()-(10-i)*2);
-        color.setAlpha(150 - qSqrt(i)*50);
-        painter.setPen(color);
-        painter.drawPath(path);
-    }
+//    QColor color(0, 0, 0, 50);
+//    for(int i=0; i<10; i++)
+//    {
+//        QPainterPath path;
+//        path.setFillRule(Qt::WindingFill);
+//        path.addRect(10-i, 10-i, this->width()-(10-i)*2, this->height()-(10-i)*2);
+//        color.setAlpha(150 - qSqrt(i)*50);
+//        painter.setPen(color);
+//        painter.drawPath(path);
+//    }
 }
 
 
@@ -343,6 +363,21 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
         m_pPicClient = new MyPictureThread_Client(this, QHostAddress(QString(ip)));
     }
     m_pPicClient->start();
+
+    if (!m_pVideoRecv)
+    {
+        m_pVideoRecv = new MyVideo_Recv_Thread(this,QHostAddress(QString(ip)));
+    }
+    else
+    {
+        delete m_pVideoRecv;
+        m_pVideoRecv = new MyVideo_Recv_Thread(this,QHostAddress(QString(ip)));
+    }
+    m_pVideoRecv->start();
+    while (!m_pVideoRecv->GetVideoDisplay());
+    connect(m_pVideoRecv->GetVideoDisplay(), SIGNAL(signal_get_image(QImage)),
+            this, SLOT(slot_get_image(QImage)));
+
 
     /* 建立三个必须的连接连接 */
     bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
@@ -510,7 +545,7 @@ void MainWindow::on_BTN_FILE_clicked()
 }
 
 /*  */
-void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
+void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &)
 {
 
 }
@@ -520,7 +555,7 @@ void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     m_pTextChat->Close();
-
+    m_pVideoSend->exit();
     if (m_pFileServer)
     {
         m_pFileServer->exit();
@@ -838,6 +873,11 @@ void MainWindow::slot_recv_picture_success(const QString& file)
                   QString::number(200))
                 );
 
+}
+
+void MainWindow::slot_get_image(const QImage &image)
+{
+    ui->label->setPixmap(QPixmap::fromImage(image));
 }
 
 

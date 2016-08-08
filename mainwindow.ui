@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1008</width>
-    <height>632</height>
+    <height>626</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -28,9 +28,9 @@
     <property name="geometry">
      <rect>
       <x>830</x>
-      <y>70</y>
-      <width>161</width>
-      <height>511</height>
+      <y>60</y>
+      <width>170</width>
+      <height>530</height>
      </rect>
     </property>
     <property name="font">
@@ -43,10 +43,10 @@
    <widget class="MyExTextEdit" name="TEXT_MSG_RECORD">
     <property name="geometry">
      <rect>
-      <x>410</x>
-      <y>70</y>
-      <width>401</width>
-      <height>351</height>
+      <x>400</x>
+      <y>60</y>
+      <width>420</width>
+      <height>360</height>
      </rect>
     </property>
     <property name="font">
@@ -59,10 +59,10 @@
    <widget class="QTextEdit" name="TEXT_MSG_SEND">
     <property name="geometry">
      <rect>
-      <x>410</x>
+      <x>400</x>
       <y>450</y>
-      <width>401</width>
-      <height>131</height>
+      <width>420</width>
+      <height>140</height>
      </rect>
     </property>
     <property name="font">
@@ -75,10 +75,10 @@
    <widget class="QPushButton" name="BTN_REFRESH">
     <property name="geometry">
      <rect>
-      <x>950</x>
-      <y>580</y>
-      <width>40</width>
-      <height>41</height>
+      <x>970</x>
+      <y>590</y>
+      <width>30</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
@@ -98,10 +98,10 @@
    <widget class="QPushButton" name="BTN_SEND">
     <property name="geometry">
      <rect>
-      <x>770</x>
-      <y>580</y>
-      <width>41</width>
-      <height>40</height>
+      <x>780</x>
+      <y>590</y>
+      <width>40</width>
+      <height>30</height>
      </rect>
     </property>
     <property name="text">
@@ -121,10 +121,10 @@
    <widget class="QLabel" name="LABEL_OTHER">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>70</y>
-      <width>371</width>
-      <height>351</height>
+      <x>10</x>
+      <y>60</y>
+      <width>380</width>
+      <height>360</height>
      </rect>
     </property>
     <property name="text">
@@ -140,10 +140,10 @@
    <widget class="QLabel" name="LABEL_SELF">
     <property name="geometry">
      <rect>
-      <x>20</x>
+      <x>10</x>
       <y>450</y>
-      <width>151</width>
-      <height>131</height>
+      <width>190</width>
+      <height>140</height>
      </rect>
     </property>
     <property name="sizePolicy">
@@ -202,7 +202,7 @@
     </property>
     <property name="iconSize">
      <size>
-      <width>50</width>
+      <width>40</width>
       <height>40</height>
      </size>
     </property>
@@ -210,10 +210,10 @@
    <widget class="QPushButton" name="BTN_WINDOW_CLOSE">
     <property name="geometry">
      <rect>
-      <x>950</x>
-      <y>20</y>
-      <width>41</width>
-      <height>41</height>
+      <x>970</x>
+      <y>10</y>
+      <width>30</width>
+      <height>30</height>
      </rect>
     </property>
     <property name="text">
@@ -221,7 +221,7 @@
     </property>
     <property name="icon">
      <iconset resource="picture.qrc">
-      <normaloff>:/src/windowclose_3.png</normaloff>:/src/windowclose_3.png</iconset>
+      <normaloff>:/src/close_2.png</normaloff>:/src/close_2.png</iconset>
     </property>
     <property name="iconSize">
      <size>
@@ -233,10 +233,10 @@
    <widget class="QPushButton" name="BTN_MIN">
     <property name="geometry">
      <rect>
-      <x>900</x>
-      <y>20</y>
-      <width>41</width>
-      <height>41</height>
+      <x>930</x>
+      <y>10</y>
+      <width>30</width>
+      <height>30</height>
      </rect>
     </property>
     <property name="text">
@@ -244,11 +244,11 @@
     </property>
     <property name="icon">
      <iconset resource="picture.qrc">
-      <normaloff>:/src/min_2.png</normaloff>:/src/min_2.png</iconset>
+      <normaloff>:/src/min_3.png</normaloff>:/src/min_3.png</iconset>
     </property>
     <property name="iconSize">
      <size>
-      <width>25</width>
+      <width>22</width>
       <height>25</height>
      </size>
     </property>
@@ -256,7 +256,7 @@
    <widget class="QPushButton" name="BTN_SEND_PIC">
     <property name="geometry">
      <rect>
-      <x>420</x>
+      <x>410</x>
       <y>420</y>
       <width>40</width>
       <height>31</height>
@@ -279,15 +279,15 @@
    <widget class="QLabel" name="label">
     <property name="geometry">
      <rect>
-      <x>20</x>
-      <y>20</y>
-      <width>240</width>
-      <height>40</height>
+      <x>0</x>
+      <y>0</y>
+      <width>160</width>
+      <height>60</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <family>微软雅黑</family>
+      <family>华文彩云</family>
       <pointsize>26</pointsize>
       <weight>50</weight>
       <italic>false</italic>
@@ -299,7 +299,7 @@
      <bool>true</bool>
     </property>
     <property name="text">
-     <string>VCHAT</string>
+     <string>  VChat</string>
     </property>
     <property name="textFormat">
      <enum>Qt::PlainText</enum>
@@ -308,7 +308,7 @@
    <widget class="QPushButton" name="BTN_VIDEO">
     <property name="geometry">
      <rect>
-      <x>200</x>
+      <x>240</x>
       <y>460</y>
       <width>51</width>
       <height>31</height>
@@ -331,10 +331,10 @@
    <widget class="QSlider" name="SLIDER_VOICE">
     <property name="geometry">
      <rect>
-      <x>370</x>
+      <x>360</x>
       <y>450</y>
       <width>19</width>
-      <height>131</height>
+      <height>140</height>
      </rect>
     </property>
     <property name="orientation">
@@ -344,7 +344,7 @@
    <widget class="QPushButton" name="BTN_SEND_EMOJI">
     <property name="geometry">
      <rect>
-      <x>470</x>
+      <x>460</x>
       <y>420</y>
       <width>40</width>
       <height>31</height>
@@ -477,7 +477,7 @@
    <widget class="QPushButton" name="BTN_FILE">
     <property name="geometry">
      <rect>
-      <x>520</x>
+      <x>510</x>
       <y>420</y>
       <width>41</width>
       <height>31</height>
@@ -500,7 +500,7 @@
    <widget class="QPushButton" name="BTN_SHAKE">
     <property name="geometry">
      <rect>
-      <x>570</x>
+      <x>560</x>
       <y>420</y>
       <width>41</width>
       <height>31</height>
@@ -526,7 +526,7 @@
       <x>320</x>
       <y>450</y>
       <width>19</width>
-      <height>131</height>
+      <height>140</height>
      </rect>
     </property>
     <property name="orientation">
@@ -536,9 +536,9 @@
    <widget class="QComboBox" name="COMBO_DOWN_FILE_LIST">
     <property name="geometry">
      <rect>
-      <x>620</x>
+      <x>610</x>
       <y>420</y>
-      <width>131</width>
+      <width>140</width>
       <height>30</height>
      </rect>
     </property>
@@ -547,6 +547,25 @@
     </property>
     <property name="autoFillBackground">
      <bool>false</bool>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="LINE_COMBO">
+    <property name="geometry">
+     <rect>
+      <x>610</x>
+      <y>420</y>
+      <width>120</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>微软雅黑</family>
+      <pointsize>11</pointsize>
+     </font>
+    </property>
+    <property name="readOnly">
+     <bool>true</bool>
     </property>
    </widget>
   </widget>
