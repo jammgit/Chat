@@ -341,6 +341,14 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     qDebug() << QString(ip);
     /* create file , picture socket */
     //emit this->signal_create_socket(QHostAddress(QString(ip)));
+    /* 建立三个必须的连接连接 */
+    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
+    if (!b)
+    {
+        QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
+        ui->LIST_HOST->setEnabled(true);
+        return;
+    }
 
     if (!m_pFileClient)
     {
@@ -364,29 +372,8 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     }
     m_pPicClient->start();
 
-    if (!m_pVideoRecv)
-    {
-        m_pVideoRecv = new MyVideo_Recv_Thread(this,QHostAddress(QString(ip)));
-    }
-    else
-    {
-        delete m_pVideoRecv;
-        m_pVideoRecv = new MyVideo_Recv_Thread(this,QHostAddress(QString(ip)));
-    }
-    m_pVideoRecv->start();
-    while (!m_pVideoRecv->GetVideoDisplay());
-    connect(m_pVideoRecv->GetVideoDisplay(), SIGNAL(signal_get_image(QImage)),
-            this, SLOT(slot_get_image(QImage)));
 
 
-    /* 建立三个必须的连接连接 */
-    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
-    if (!b)
-    {
-        QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
-        ui->LIST_HOST->setEnabled(true);
-        return;
-    }
 
 }
 
@@ -745,6 +732,12 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
             m_pFileServer->start();
         }
     }
+    /* 视频接受 */
+    m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
+    connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
+            this, SLOT(slot_get_image(QImage)));
+    m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay);
+    m_pVideoRecv->start();
 }
 
 
@@ -760,6 +753,13 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         QMessageBox::information(this, "请求成功", "现在可以开始聊天");
         this->__Set_Session(true);
         ui->LIST_HOST->setEnabled(false);
+        /* 视频接受 */
+        m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
+        connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
+                this, SLOT(slot_get_image(QImage)));
+        m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay);
+        m_pVideoRecv->start();
+
     }
     else
     {/* 聊天请求被拒绝 */
@@ -877,7 +877,7 @@ void MainWindow::slot_recv_picture_success(const QString& file)
 
 void MainWindow::slot_get_image(const QImage &image)
 {
-    ui->label->setPixmap(QPixmap::fromImage(image));
+    ui->LABEL_OTHER->setPixmap(QPixmap::fromImage(image));
 }
 
 

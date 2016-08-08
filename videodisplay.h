@@ -125,7 +125,7 @@ class MyVideo_Recv_Thread : public QThread
 {
     Q_OBJECT
 public:
-    explicit MyVideo_Recv_Thread(QMainWindow*pwin,const QHostAddress&addr, QObject* parent=0);
+    explicit MyVideo_Recv_Thread(VideoDisplay_Recv*recv, QObject* parent=0);
 
     /* 因为接受视频时，线程无线阻塞，则在线程里面创建的信号槽无法生效,必须在主线程connect */
     VideoDisplay_Recv* GetVideoDisplay()
@@ -141,8 +141,6 @@ protected slots:
 
 private:
 
-    QMainWindow        * m_pWin;
-    QHostAddress         m_addr;
     VideoDisplay_Recv  * m_pVideoRecv;
 };
 
@@ -154,7 +152,7 @@ class VideoDisplay_Recv : public QObject
 {
     Q_OBJECT
 public:
-    VideoDisplay_Recv(QMainWindow* pwin,const QHostAddress& addr, QObject*parent = nullptr);
+    VideoDisplay_Recv(const QHostAddress& addr, QObject*parent = nullptr);
     ~VideoDisplay_Recv()
     {
 
@@ -165,12 +163,13 @@ signals:
 private:
     /* 初始化ffmpeg */
     void __Init();
+public:
+
     /* 获取裸流并进行图片解析，然后将解析出来的图片通过信号发给主线程进行显示 */
-    void __Play();
+    void Play();
 
 private:
 
-    QMainWindow         * m_pWin;
 
     QHostAddress          m_addr;
 

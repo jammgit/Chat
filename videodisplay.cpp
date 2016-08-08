@@ -283,15 +283,15 @@ void VideoDisplay_Send::slot_open_camera()
 /// MyVideo_Recv_Thread
 //////////////////////////////////////////////////////////////////////////////
 
-MyVideo_Recv_Thread::MyVideo_Recv_Thread(QMainWindow*pwin,const QHostAddress&addr, QObject* parent)
-    :QThread(parent),m_pWin(pwin),m_addr(addr),m_pVideoRecv(nullptr)
+MyVideo_Recv_Thread::MyVideo_Recv_Thread(VideoDisplay_Recv*recv, QObject* parent)
+    :QThread(parent),m_pVideoRecv(recv)
 {
 
 }
 
 void MyVideo_Recv_Thread::run()
 {
-    m_pVideoRecv = new VideoDisplay_Recv(m_pWin,m_addr);
+    m_pVideoRecv->Play();
 //    this->exec();
 }
 
@@ -304,11 +304,10 @@ void MyVideo_Recv_Thread::slot_finished()
 /// VideoDisplay_Recv
 /// ///////////////////////////////////////////////////////////////////////////
 
-VideoDisplay_Recv::VideoDisplay_Recv(QMainWindow* pwin,const QHostAddress& addr, QObject*parent)
-    : QObject(parent),m_pWin(pwin),m_addr(addr)
+VideoDisplay_Recv::VideoDisplay_Recv(const QHostAddress& addr, QObject*parent)
+    : QObject(parent),m_addr(addr)
 {
     this->__Init();
-    this->__Play();
 }
 
 void VideoDisplay_Recv::__Init()
@@ -374,16 +373,11 @@ void VideoDisplay_Recv::__Init()
 
 }
 
-void VideoDisplay_Recv::__Play()
+void VideoDisplay_Recv::Play()
 {
     //一帧一帧读取视频
     int frameFinished=0;
     while (true){
-        if(isplaying == false)
-        {
-            qDebug() << "stop play";
-            break;
-        }
         if (av_read_frame(pAVFormatContext, &pAVPacket) >= 0){
             if(pAVPacket.stream_index==videoStreamIndex){
                 qDebug()<<"开始解码"<<QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");

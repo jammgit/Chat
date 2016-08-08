@@ -140,6 +140,7 @@ private:
 
     MyVideo_Send_Thread         * m_pVideoSend;
     MyVideo_Recv_Thread         * m_pVideoRecv;
+    VideoDisplay_Recv           * m_pRecvDisplay;
 
 };
 
