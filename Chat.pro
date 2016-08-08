@@ -48,7 +48,11 @@ LIBS += ./ffmpeg/lib/libavcodec.dll.a \
 
 LIBS += ./x264/lib/libx264.dll.a
 
+#设置目标生成目录，注意，此时程序运行加载的资源也要放到此目录（qss/emoji）
 DESTDIR=bin
+#打开目录并选中
+
+LIBS += -lshell32
 
 FORMS    += mainwindow.ui
 

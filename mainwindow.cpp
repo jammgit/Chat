@@ -147,9 +147,8 @@ void MainWindow::__Init()
         fcom.close();
         ui->COMBO_DOWN_FILE_LIST->setStyleSheet("QComboBox {background-color:transparent;} "
                                                 " QToolTip {background-color:white;color:black;} ");
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdvcbvcbvcbvcbcad"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("asdsaad"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("哈哈"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
 
         ui->COMBO_DOWN_FILE_LIST->setLineEdit(ui->LINE_COMBO);
         ui->COMBO_DOWN_FILE_LIST->lineEdit()->setStyleSheet("QLineEdit {background-color:transparent;} ");
@@ -176,11 +175,11 @@ void MainWindow::__Init()
 
 
     /* 文件服务开始监听 */
-    m_pFileServer = new MyFileThread_Server(this);
+    m_pFileServer = new MyFileThread_Server(this,this);
     m_pFileServer->start();
     m_pFileClient = nullptr;
     /* 图片服务开始监听 */
-    m_pPicServer = new MyPictureThread_Server(this);
+    m_pPicServer = new MyPictureThread_Server(this,this);
     m_pPicServer->start();
     m_pPicClient = nullptr;
 
@@ -339,6 +338,7 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     }
     ip[iplen] = '\0';
     qDebug() << QString(ip);
+    m_peerhost.address = QString(ip);
     /* create file , picture socket */
     //emit this->signal_create_socket(QHostAddress(QString(ip)));
     /* 建立三个必须的连接连接 */
@@ -531,10 +531,29 @@ void MainWindow::on_BTN_FILE_clicked()
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
-/*  */
-void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &)
+/* 打开资源管理 */
+void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
 {
-
+    static bool start = true;
+    if (start)
+    {
+        start = false;
+        return;
+    }
+    QString str("./tmp/");
+    str.append(arg1);
+    QFileInfo fi(str);
+    QString filePath;
+    filePath=fi.absolutePath();
+#ifdef Q_OS_WIN32
+    filePath.replace(QString("/"),QString("\\"));
+    QString path("/select,");
+    path.append(filePath);
+    path.append(QString("\\")+arg1);
+    ShellExecuteA(0,"open","explorer.exe",path.toStdString().c_str(),NULL,true);
+#else
+    QDesktopServices::openUrl(QUrl(filePath, QUrl::TolerantMode));
+#endif
 }
 
 
@@ -732,12 +751,7 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
             m_pFileServer->start();
         }
     }
-    /* 视频接受 */
-    m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
-    connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
-            this, SLOT(slot_get_image(QImage)));
-    m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay);
-    m_pVideoRecv->start();
+
 }
 
 
@@ -746,18 +760,17 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
 void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 {
     if (ret)
-    {
+    {/* 聊天请求被接受 */
         /* 获得对端信息 */
         m_peerhost = peerhost;
-        /* 聊天请求被接受 */
-        QMessageBox::information(this, "请求成功", "现在可以开始聊天");
         this->__Set_Session(true);
         ui->LIST_HOST->setEnabled(false);
+
         /* 视频接受 */
         m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
         connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
                 this, SLOT(slot_get_image(QImage)));
-        m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay);
+        m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay,this);
         m_pVideoRecv->start();
 
     }
@@ -765,8 +778,6 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
     {/* 聊天请求被拒绝 */
         QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
         ui->LIST_HOST->setEnabled(false);
-//        m_pFileChat->stop();
-//        m_pPicChat->stop();
 
         if (m_pFileClient)
         {
@@ -783,8 +794,6 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 void MainWindow::slot_send_error()
 {
     this->__Set_Session(false);
-//    m_pFileChat->stop();
-//    m_pPicChat->stop();
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
     if (m_pFileClient)
@@ -810,13 +819,6 @@ void MainWindow::slot_show_time()
 
 void MainWindow::slot_shake_window()
 {
-    /* 设置窗口置顶 */
-//    Qt::WindowFlags flags = this->windowFlags();
-//    flags |= Qt::WindowStaysOnTopHint;
-//    this->setWindowFlags(flags);
-//    this->show();
-//    qDebug() << "show window";
-
     QPoint point = this->pos();
     int x = point.x();
     int y = point.y();
@@ -839,9 +841,6 @@ void MainWindow::slot_shake_window()
         qDebug() << "move window";
     }
     this->move(point);
-    /* 取消置顶 */
-//    this->setWindowFlags(flags & ~Qt::WindowStaysOnTopHint);
-//    this->show();
 
 }
 

@@ -93,11 +93,10 @@ private:
     void __Init_Camera();
 
 signals:
-    void signal_capture_image(const QImage& image);
 
 private slots:
     /* 获取一张图片 */
-    void slot_capture_image(int,QImage);
+    void slot_capture_image(int, QImage image);
 
     void slot_close_camera();
 

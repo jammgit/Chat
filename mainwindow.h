@@ -18,6 +18,13 @@
 #include <QImage>
 #include <QCamera>
 #include <QVideoWidget>
+#include <QFileInfo>
+#include <QDesktopServices>
+
+#ifdef Q_OS_WIN32
+#include <Windows.h>
+#include <ShellAPI.h>
+#endif
 
 #include "findterminal.h"
 #include "textchat.h"
@@ -73,13 +80,13 @@ private slots:  /* ------------窗口控件槽函数---------------- */
     void on_BTN_SEND_PIC_clicked();
 
     void on_BTN_VIDEO_clicked();
-
+    /* 表情按钮 */
     void on_BTN_SEND_EMOJI_clicked();
-
+    /* 发送表情 */
     void on_TABLE_EMOJI_clicked(const QModelIndex &index);
-
+    /* 振动窗口 */
     void on_BTN_SHAKE_clicked();
-
+    /* 发送文件 */
     void on_BTN_FILE_clicked();
 
     void on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1);
@@ -98,16 +105,16 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_send_error();
     /* 显示时间 */
     void slot_show_time();
-
+    /* 振动窗口 */
     void slot_shake_window();
-    /* */
+    /* 接受文件、图片 */
     void slot_recv_file_success(const QString& file);
     void slot_recv_picture_success(const QString& file);
-
+    /* 视频帧显示 */
     void slot_get_image(const QImage& image);
 
 signals:
-    /* 主线程通知 */
+    /* 主线程通知,添加发送文件、图片任务 */
     void signal_append_file_task(const QString& filepath);
     void signal_append_picture_task(const QString& filepath);
 
@@ -133,11 +140,10 @@ private:
     /* 文件服务 */
     MyFileThread_Client         * m_pFileClient;
     MyFileThread_Server         * m_pFileServer;
-
-    /**/
+    /* 图片服务 */
     MyPictureThread_Client      * m_pPicClient;
     MyPictureThread_Server      * m_pPicServer;
-
+    /* 视频服务 */
     MyVideo_Send_Thread         * m_pVideoSend;
     MyVideo_Recv_Thread         * m_pVideoRecv;
     VideoDisplay_Recv           * m_pRecvDisplay;
