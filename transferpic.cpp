@@ -165,6 +165,12 @@ TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
     : QObject(parent),m_pSocket(socket),m_pMutex(new QMutex),
       m_send_file(nullptr),m_recv_file(nullptr)
 {
+    qDebug() << "size of chat_pic_pack_t:" << sizeof(chat_pic_pack_t);
+    /* 预先分配好发送缓冲 */
+    m_pRecvPack = (chat_pic_pack_t*)malloc(sizeof(chat_pic_pack_t)
+                                           + BUFFER_LEN);
+    m_pSendPack = (chat_pic_pack_t*)malloc(sizeof(chat_pic_pack_t)
+                                           + BUFFER_LEN);
 
     m_pSendTimer = new QTimer;
     connect(m_pSendTimer, SIGNAL(timeout()), this, SLOT(slot_send_file()));
@@ -200,47 +206,76 @@ void TransferPic::slot_append_picture_task(const QString &filepath)
 
 void TransferPic::slot_recv_file()
 {
-    QString recv(m_pSocket->readAll());
-    QList<QString> msgs = recv.split(";");
-    msgs.pop_back();
+    m_write_file.lock();
+    char buffer[32767];
+    qint64 ret = m_pSocket->read(buffer, 32767);
+    buffer[ret] = '\0';
 
-    while (!msgs.isEmpty())
+    int idx = 0;
+//    if (m_pRecvPack->is_new_file == 1)
+//    {
+//        char fname[128];
+//        strncpy(fname, m_pRecvPack->data, (int)m_pRecvPack->file_name_len);
+//        fname[(int)m_pRecvPack->file_name_len] = '\0';
+//        m_recv_file_name = QString(fname);
+
+//    }
+    if (!m_recv_file_name.isEmpty())
     {
-        QList<QString> onemsg = msgs.front().split(":");
-        msgs.pop_front();
-        if (onemsg.size()<2)
-        {
-            continue;
-        }
-        QString file = QByteArray::fromBase64(onemsg[0].toLatin1());
-
+        m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab");
         if (!m_recv_file)
         {
-            m_recv_file_name = file;
-            QString str("./tmp/");
-            str.append(file);
-            m_recv_file = fopen(str.toStdString().c_str(), "wb");
-            if (!m_recv_file)
-            {
-                QMessageBox::information(nullptr, "错误", "打开文件错误，请重启");
-                exit(0);
-            }
-        }
-
-        QString text = QByteArray::fromBase64(onemsg[1].toLatin1());
-
-        fwrite(text.toStdString().c_str(),1,text.length(),m_recv_file);
-
-        if (onemsg.size() == 3)
-        {/* 说明文件传输完成 */
-            fflush(m_recv_file);
-            fclose(m_recv_file);
-            m_recv_file = nullptr;
-            emit this->signal_recv_picture_success(m_recv_file_name);
+            qDebug() << "open file for write error";
         }
     }
+
+    while ((qint64)idx < ret)
+    {
+        m_pRecvPack = reinterpret_cast<chat_pic_pack_t*>(buffer+idx);
+        /* 提取出本条数据所属的文件 */
+        int flen = ntohs(m_pRecvPack->file_name_len);
+        char buffer[256];
+        strncpy(buffer, m_pRecvPack->data, flen);
+        buffer[flen] = '\0';
+        QString fname(buffer);
+        int dlen = ntohs(m_pRecvPack->data_used_len);
+
+        if (m_recv_file_name == fname) /* 还是旧文件数据 */
+        {
+            if (m_recv_file)
+                fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
+            else
+                qDebug() << "write not opened file";
+        }
+        else                            /* 本条数据为新文件的 */
+        {
+            if (m_recv_file)
+            {
+                fclose(m_recv_file);
+                m_recv_file = nullptr;
+            }
+            m_recv_file_name = fname;
+            m_recv_file = fopen(fname.toStdString().c_str(), "ab");
+            if (!m_recv_file)
+            {
+                qDebug() << "open file for write error";
+            }
+            if (m_recv_file)
+                fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
+            else
+                qDebug() << "write not opened file";
+        }
+        idx += sizeof(chat_pic_pack_t)+dlen;
+
+    }
     if (m_recv_file)
-        fflush(m_recv_file);
+    {
+        fclose(m_recv_file);
+        m_recv_file = nullptr;
+    }
+
+    m_write_file.unlock();
+
 }
 
 void TransferPic::slot_send_file()
@@ -248,81 +283,56 @@ void TransferPic::slot_send_file()
     if (!m_pSocket)
         return;
 
+    qint64 ret;
     if (m_send_file)
     {/* 有一个正在发送的文件,分4次,每次1024byte */
+
         for (int i = 0; i < 4; ++i)
         {
-            char buffer[1024];
-            size_t size = fread(buffer,1,1023,m_send_file);
-            buffer[size] = '\0';
-            QString text(buffer);
-            QString fn_base = m_send_file_name.toUtf8().toBase64();
-
-            int ret;
-            if (feof(m_send_file))                                    /* 文件读取完毕 */
+            if (!feof(m_send_file))
             {
-                QString data(fn_base + ':'
-                             + text.toUtf8().toBase64() + ':'
-                             + END.toUtf8().toBase64() + ';');
-                ret = m_pSocket->write(data.toLatin1());
-                if (ret < 0)
-                {/* 对端出错 */
-                    /* 清空信息 */
-                    fclose(m_send_file);
-                    m_send_file = nullptr;
-                    m_tasklist.clear();
-                    m_files.clear();
-                    delete m_pMutex;
-                    m_pSendTimer->stop();
-                    delete m_pSendTimer;
-                    if (m_recv_file)
-                    {
-                        fclose(m_recv_file);
-                        m_recv_file = nullptr;
-                    }
-                    emit this->signal_peer_close();
+                /* 如果是新文件则发送文件名，否则不发送 */
+                size_t size = fread(m_pSendPack->data+(int)m_pSendPack->file_name_len,
+                                    1,
+                                    BUFFER_LEN-(int)m_pSendPack->file_name_len-1,
+                                    m_send_file);
 
+                m_pSendPack->data[(int)m_pSendPack->file_name_len+size] = '\0';
+                /* 复制文件名 */
+                strncpy(m_pSendPack->data,m_send_file_name.toStdString().c_str(),
+                        static_cast<size_t>( m_pSendPack->file_name_len));
+                /* 计算文件名、数据总长度 */
+                m_pSendPack->data_used_len = m_send_file_name.length()+size;
+                /* 转换网络字节序 */
+                m_pSendPack->data_used_len = htons(m_pSendPack->data_used_len);
+                m_pSendPack->file_name_len = htons(m_pSendPack->file_name_len);
+
+                ret = m_pSocket->write((char *)m_pSendPack, sizeof(m_pSendPack)+
+                                                            m_send_file_name.length()+
+                                                            size);
+                m_pSocket->waitForBytesWritten();
+
+                if (ret < 0)
+                {
+                    emit this->signal_peer_close();
                 }
-                else if ((size_t)ret < size)
-                {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
-                    fseek(m_send_file,-size,SEEK_CUR);
-                    break;
+                else if (ret < (qint64)size)
+                {
+                    qDebug() << "send not completed";
                 }
-                else/* 写完 */
+            }
+            else
+            {
+                if (m_send_file)
                 {
                     fclose(m_send_file);
                     m_send_file = nullptr;
-                    break;
                 }
+                break;
             }
-            else                                                /* 文件未读取完 */
-            {
-                QString data(fn_base + ':' + text.toUtf8().toBase64() + ';');
-                ret = m_pSocket->write(data.toLatin1());
-                if (ret < 0)
-                {/* 对端出错 */
-                    emit this->signal_peer_close();
-                    /* 清空信息 */
-                    fclose(m_send_file);
-                    m_send_file = nullptr;
-                    m_tasklist.clear();
-                    m_files.clear();
-                    delete m_pMutex;
-                    m_pSendTimer->stop();
-                    delete m_pSendTimer;
-                    if (m_recv_file)
-                    {
-                        fclose(m_recv_file);
-                        m_recv_file = nullptr;
-                    }
-                }
-                else if ((size_t)ret < size)
-                {/* 没有完全写进内核缓冲区,那么文件指针回溯 */
-                    fseek(m_send_file,-(size-ret),SEEK_CUR);
-                    break;
-                }
-            }
-        }
+
+
+        }//for
 
     }
     else if (!m_tasklist.isEmpty())
@@ -334,6 +344,8 @@ void TransferPic::slot_send_file()
         /* 新建发送的文件 */
         m_send_file = fopen(s.filepath.toStdString().c_str(), "rb");
         m_send_file_name = s.transname;
+
+        m_pSendPack->file_name_len = static_cast<short>(m_send_file_name.length());
     }
 
 }

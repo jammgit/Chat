@@ -129,6 +129,7 @@ private:
     bool                          m_is_show_time;
 
     bool                          m_is_show_emoji_table;
+    bool                          m_is_open_source_mng;
 
     /* 正在聊天的对端用户的信息 */
     chat_host_t                   m_peerhost;

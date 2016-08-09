@@ -29,9 +29,9 @@ protected:
     void contextMenuEvent(QContextMenuEvent *e);
 
 private:
-    QList<QMovie *> lstMovie;
-    QList<QUrl> lstUrl;
-    QHash<QMovie*, QUrl> urls;
+    QList<QMovie *>         m_lstMovie;
+    QList<QUrl>             m_lstUrl;
+    QHash<QMovie*, QUrl>    m_urls;
 };
 
 

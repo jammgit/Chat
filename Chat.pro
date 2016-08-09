@@ -53,6 +53,7 @@ DESTDIR=bin
 #打开目录并选中
 
 LIBS += -lshell32
+LIBS +=  -lWs2_32
 
 FORMS    += mainwindow.ui
 

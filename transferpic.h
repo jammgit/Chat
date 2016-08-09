@@ -17,10 +17,14 @@
 #include <QThread>
 #include <QTimer>
 #include <stdio.h>
+#include <stdlib.h>
+#include <winsock.h>
+
 #include "msginfo.h"
 
-/*  传输格式：        文件名(base64编码) +':'+ 文件内容(base64编码)+';'
- *  文件传输完成标志： 文件名(base64编码)  + ':' +剩余文件内容(base64编码) +':'+"END"(base64编码) ';'
+
+/*  |1bit|7bit|16bits|[filename]|data
+ *
 */
 
 ///////////////////////////////////////////////////////////////////////
@@ -97,6 +101,17 @@ public:
         if (m_recv_file)
             fclose(m_recv_file);
 
+        if (m_pRecvPack)
+        {
+            free(m_pRecvPack);
+            m_pRecvPack = nullptr;
+        }
+        if (m_pSendPack)
+        {
+            free(m_pSendPack);
+            m_pSendPack = nullptr;
+        }
+
     }
 
 signals:
@@ -118,7 +133,7 @@ private slots:
     void slot_send_file();
 
 private:
-
+    QMutex                    m_write_file;
     /* 图片、文件传输套接字 */
     QTcpSocket              * m_pSocket;
     /* 任务链表 */
@@ -135,6 +150,8 @@ private:
     QString                   m_recv_file_name;
     /* 定时检测是否有需要发送的文件，同时每次只发送一部分，避免线程阻塞 */
     QTimer                  * m_pSendTimer;
+    chat_pic_pack_t         * m_pSendPack;
+    chat_pic_pack_t         * m_pRecvPack;
 };
 
 

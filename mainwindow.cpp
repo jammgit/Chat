@@ -141,21 +141,6 @@ void MainWindow::__Init()
         ui->BTN_FILE->setStyleSheet(str);
         ui->BTN_SHAKE->setStyleSheet(str);
 
-        QFile fcom("./qss/combobox.qss");
-        fcom.open(QFile::ReadOnly);
-        str = fcom.readAll();
-        fcom.close();
-
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
-        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
-
-
         ui->COMBO_DOWN_FILE_LIST->setLineEdit(ui->LINE_COMBO);
         ui->COMBO_DOWN_FILE_LIST->lineEdit()->setStyleSheet("QLineEdit {background-color:transparent;} "
                                                             "QLineEdit {border: 1px solid  #000000}");
@@ -176,6 +161,7 @@ void MainWindow::__Init()
     connect(m_pShowTimer, SIGNAL(timeout()), this, SLOT(slot_show_time()));
     m_is_show_time = true;
 
+    m_is_open_source_mng = true;
 
     /* 初始化多播、文本聊天接口 */
     m_pFindTerminal = new FindTerminal;
@@ -229,14 +215,18 @@ void MainWindow::__Set_Session(bool yes)
         ui->BTN_SHAKE->setEnabled(true);
         ui->BTN_FILE->setEnabled(true);
         ui->COMBO_DOWN_FILE_LIST->setEnabled(true);
+        ui->LINE_COMBO->setEnabled(true);
         ui->LABEL_CHAT_WITH_WHO->setText(m_peerhost.hostname);
     }
     else
     {
         ui->TEXT_MSG_RECORD->clear();
         ui->TEXT_MSG_SEND->clear();
+        m_is_open_source_mng = false;
         ui->COMBO_DOWN_FILE_LIST->clear();
-        ui->COMBO_DOWN_FILE_LIST->setEditable(false);
+        m_is_open_source_mng = true;
+        ui->COMBO_DOWN_FILE_LIST->setEnabled(false);
+        ui->LINE_COMBO->setEnabled(false);
         ui->TEXT_MSG_RECORD->setEnabled(false);
         ui->TEXT_MSG_SEND->setEnabled(false);
         ui->BTN_SEND->setEnabled(false);
@@ -539,26 +529,23 @@ void MainWindow::on_BTN_FILE_clicked()
 /* 打开资源管理 */
 void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
 {
-    static bool start = true;
-    if (start)
+    if (m_is_open_source_mng)
     {
-        start = false;
-        return;
-    }
-    QString str("./tmp/");
-    str.append(arg1);
-    QFileInfo fi(str);
-    QString filePath;
-    filePath=fi.absolutePath();
+        QString str("./tmp/");
+        str.append(arg1);
+        QFileInfo fi(str);
+        QString filePath;
+        filePath=fi.absolutePath();
 #ifdef Q_OS_WIN32
-    filePath.replace(QString("/"),QString("\\"));
-    QString path("/select,");
-    path.append(filePath);
-    path.append(QString("\\")+arg1);
-    ShellExecuteA(0,"open","explorer.exe",path.toStdString().c_str(),NULL,true);
+        filePath.replace(QString("/"),QString("\\"));
+        QString path("/select,");
+        path.append(filePath);
+        path.append(QString("\\")+arg1);
+        ShellExecuteA(0,"open","explorer.exe",path.toStdString().c_str(),NULL,true);
 #else
-    QDesktopServices::openUrl(QUrl(filePath, QUrl::TolerantMode));
+        QDesktopServices::openUrl(QUrl(filePath, QUrl::TolerantMode));
 #endif
+    }
 }
 
 

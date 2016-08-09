@@ -48,13 +48,17 @@ typedef struct
  *      C类 192.168.0.0--192.168.255.255
  */
 #define MULTICAST_PORT 9999
+#define SINGLE_PORT    7777
 #define MULTICAST_ADDR "225.12.23.60"
-#define SINGLE_PORT 7777
+
 
 
 /* use by:textchat.h */
 /* 文本聊天的服务端端口是8888 */
 #define TEXTCHAT_SERVER_PORT 8888
+#define PICTURE_SERVER_PORT  8887
+#define FILE_SERVER_PORT     8886
+#define VIDEO_SERVER_PORT    8885
 /* 类内部调用的控制消息，非Base64编码 */
 #define ACCEPT   QString("accept").toUtf8()
 #define REJECT   QString("reject").toUtf8()
@@ -63,9 +67,23 @@ typedef struct
  * 此文本即发生结束聊天，问题来源：QT socket同步关闭！不过--
  * Base64编码解决了问题  */
 
-#define PICTURE_SERVER_PORT 8887
-#define FILE_SERVER_PORT    8886
-#define VIDEO_SERVER_PORT   8885
+////////////////////////////////////////////////////////////////////
+///图片传输
+////////////////////////////////////////////////////////////////////
+typedef struct chat_pic_pack_s
+{
+    short   file_name_len;
+    short   data_used_len;              //有效数据长度(包括文件名)
+    char    data[];
+}chat_pic_pack_t;
+
+#define BUFFER_LEN              1024
+
+//#define PACK_RESET(arg)              (arg.is_new_file = 0,arg.file_name_len=0)
+//#define PACK_IS_NEW_FILE(arg)        (arg &  (1<<7))?true:false
+//#define PACK_SET_NEW_FILE(arg,s)     (arg = s)
+//#define PACK_FILE_NAME_LEN(arg)      (arg & ~(1<<7))
+//#define PACK_SET_NAME_LEN(arg,len)   (len > 128)?-1:(arg |= len)
 
 
 #endif // MSGTYPE_H
