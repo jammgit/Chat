@@ -18,6 +18,8 @@
 #include <QSemaphore>
 #include <QTimer>
 #include <stdio.h>
+#include <stdlib.h>
+#include <winsock.h>
 #include "msginfo.h"
 
 /*  传输格式：        文件名(base64编码) +':'+ 文件内容(base64编码)+';'
@@ -90,9 +92,7 @@ public:
             delete m_pSendTimer;
         if (m_pMutex)
         {
-            qDebug() << "a";
             delete m_pMutex;
-            qDebug() << "a";
         }
         if (m_send_file)
             fclose(m_send_file);
@@ -120,7 +120,7 @@ private slots:
     void slot_send_file();
 
 private:
-
+    QMutex                    m_read_file;
     /* 图片、文件传输套接字 */
     QTcpSocket              * m_pSocket;
     /* 任务链表 */
@@ -137,6 +137,8 @@ private:
     QString                   m_recv_file_name;
     /* 定时检测是否有需要发送的文件，同时每次只发送一部分，避免线程阻塞 */
     QTimer                  * m_pSendTimer;
+    chat_file_pack_t         * m_pSendPack;
+    chat_file_pack_t         * m_pRecvPack;
 };
 
 #endif // TRANSFERFILE_H

@@ -167,8 +167,6 @@ TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
 {
     qDebug() << "size of chat_pic_pack_t:" << sizeof(chat_pic_pack_t);
     /* 预先分配好发送缓冲 */
-    m_pRecvPack = (chat_pic_pack_t*)malloc(sizeof(chat_pic_pack_t)
-                                           + BUFFER_LEN);
     m_pSendPack = (chat_pic_pack_t*)malloc(sizeof(chat_pic_pack_t)
                                            + BUFFER_LEN);
 
@@ -188,15 +186,13 @@ void TransferPic::slot_append_picture_task(const QString &filepath)
     if (m_files.find(text.split("/").back()) != m_files.end())
     {/* 如果存在同名文件,插入一个时间值做分辨 */
         int idx = text.lastIndexOf(".");
-        text.insert(idx, QString("_%1").arg(QString(QDateTime::currentDateTime().toString().toInt())));
+        text.insert(idx, QString("_%1").arg(QString::number(QDateTime::currentDateTime().toString().toInt())));
     }
 
     s.transname = text.split("/").back();
-    qDebug() << text.split("/").back();
     /* save */
     m_files[text.split("/").back()] = s.filepath;
 
-    qDebug() << text.split("/").back();
 
     m_pMutex->lock();
     m_tasklist.push_back(s);
@@ -206,23 +202,14 @@ void TransferPic::slot_append_picture_task(const QString &filepath)
 
 void TransferPic::slot_recv_file()
 {
-    m_write_file.lock();
     char buffer[32767];
     qint64 ret = m_pSocket->read(buffer, 32767);
     buffer[ret] = '\0';
 
     int idx = 0;
-//    if (m_pRecvPack->is_new_file == 1)
-//    {
-//        char fname[128];
-//        strncpy(fname, m_pRecvPack->data, (int)m_pRecvPack->file_name_len);
-//        fname[(int)m_pRecvPack->file_name_len] = '\0';
-//        m_recv_file_name = QString(fname);
-
-//    }
-    if (!m_recv_file_name.isEmpty())
+    if (m_recv_file_name.size() != 0)
     {
-        m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab");
+        m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab+");
         if (!m_recv_file)
         {
             qDebug() << "open file for write error";
@@ -234,10 +221,10 @@ void TransferPic::slot_recv_file()
         m_pRecvPack = reinterpret_cast<chat_pic_pack_t*>(buffer+idx);
         /* 提取出本条数据所属的文件 */
         int flen = ntohs(m_pRecvPack->file_name_len);
-        char buffer[256];
-        strncpy(buffer, m_pRecvPack->data, flen);
-        buffer[flen] = '\0';
-        QString fname(buffer);
+        char buf[256];
+        strncpy(buf, m_pRecvPack->data, flen);
+        buf[flen] = '\0';
+        QString fname(buf);
         int dlen = ntohs(m_pRecvPack->data_used_len);
 
         if (m_recv_file_name == fname) /* 还是旧文件数据 */
@@ -246,16 +233,25 @@ void TransferPic::slot_recv_file()
                 fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
             else
                 qDebug() << "write not opened file";
+            if (ntohs(m_pRecvPack->is_finish) == 1)
+            {
+                fclose(m_recv_file);
+                m_recv_file = nullptr;
+                emit this->signal_recv_picture_success(m_recv_file_name);
+            }
         }
         else                            /* 本条数据为新文件的 */
         {
             if (m_recv_file)
             {
+                emit this->signal_recv_picture_success(m_recv_file_name);
                 fclose(m_recv_file);
                 m_recv_file = nullptr;
             }
             m_recv_file_name = fname;
-            m_recv_file = fopen(fname.toStdString().c_str(), "ab");
+            QString filename("./tmp/");
+            filename.append(fname);
+            m_recv_file = fopen(filename.toStdString().c_str(), "ab+");
             if (!m_recv_file)
             {
                 qDebug() << "open file for write error";
@@ -274,8 +270,6 @@ void TransferPic::slot_recv_file()
         m_recv_file = nullptr;
     }
 
-    m_write_file.unlock();
-
 }
 
 void TransferPic::slot_send_file()
@@ -283,19 +277,26 @@ void TransferPic::slot_send_file()
     if (!m_pSocket)
         return;
 
+
     qint64 ret;
     if (m_send_file)
-    {/* 有一个正在发送的文件,分4次,每次1024byte */
-
-        for (int i = 0; i < 4; ++i)
+    {/* 有一个正在发送的文件,分8次,每次1024byte */
+        m_read_file.lock();
+        for (int i = 0; i < 8; ++i)
         {
             if (!feof(m_send_file))
             {
-                /* 如果是新文件则发送文件名，否则不发送 */
+                m_pSendPack->file_name_len = static_cast<short>(m_send_file_name.length());
+
                 size_t size = fread(m_pSendPack->data+(int)m_pSendPack->file_name_len,
                                     1,
-                                    BUFFER_LEN-(int)m_pSendPack->file_name_len-1,
+                                    BUFFER_LEN-(int)m_pSendPack->file_name_len,
                                     m_send_file);
+                /* 在判断文件是否结束 */
+                if (feof(m_send_file))
+                    m_pSendPack->is_finish = htons(1);
+                else
+                    m_pSendPack->is_finish = htons(0);
 
                 m_pSendPack->data[(int)m_pSendPack->file_name_len+size] = '\0';
                 /* 复制文件名 */
@@ -307,10 +308,11 @@ void TransferPic::slot_send_file()
                 m_pSendPack->data_used_len = htons(m_pSendPack->data_used_len);
                 m_pSendPack->file_name_len = htons(m_pSendPack->file_name_len);
 
-                ret = m_pSocket->write((char *)m_pSendPack, sizeof(m_pSendPack)+
+                ret = m_pSocket->write((char *)m_pSendPack, sizeof(chat_pic_pack_t)+
                                                             m_send_file_name.length()+
                                                             size);
-                m_pSocket->waitForBytesWritten();
+                //m_pSocket->waitForBytesWritten();
+                qDebug() << "send bytes:" <<ret;
 
                 if (ret < 0)
                 {
@@ -320,6 +322,7 @@ void TransferPic::slot_send_file()
                 {
                     qDebug() << "send not completed";
                 }
+                qDebug() << "send packet";
             }
             else
             {
@@ -328,12 +331,13 @@ void TransferPic::slot_send_file()
                     fclose(m_send_file);
                     m_send_file = nullptr;
                 }
+                qDebug() << "send ok";
                 break;
             }
 
 
         }//for
-
+        m_read_file.unlock();
     }
     else if (!m_tasklist.isEmpty())
     {/* 没有正在发的文件，但任务列表有需要发的文件 */
@@ -345,7 +349,6 @@ void TransferPic::slot_send_file()
         m_send_file = fopen(s.filepath.toStdString().c_str(), "rb");
         m_send_file_name = s.transname;
 
-        m_pSendPack->file_name_len = static_cast<short>(m_send_file_name.length());
     }
 
 }

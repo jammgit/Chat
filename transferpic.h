@@ -92,20 +92,13 @@ public:
             delete m_pSendTimer;
         if (m_pMutex)
         {
-            qDebug() << "a";
             delete m_pMutex;
-            qDebug() << "a";
         }
         if (m_send_file)
             fclose(m_send_file);
         if (m_recv_file)
             fclose(m_recv_file);
 
-        if (m_pRecvPack)
-        {
-            free(m_pRecvPack);
-            m_pRecvPack = nullptr;
-        }
         if (m_pSendPack)
         {
             free(m_pSendPack);
@@ -133,7 +126,7 @@ private slots:
     void slot_send_file();
 
 private:
-    QMutex                    m_write_file;
+    QMutex                    m_read_file;
     /* 图片、文件传输套接字 */
     QTcpSocket              * m_pSocket;
     /* 任务链表 */

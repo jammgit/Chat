@@ -857,8 +857,20 @@ void MainWindow::slot_shake_window()
 /* */
 void MainWindow::slot_recv_file_success(const QString& file)
 {
+    m_is_open_source_mng = false;
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
+    m_is_open_source_mng = true;
     QString html;
+    /* 显示时间 */
+    if (m_is_show_time)
+    {
+        html += (TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE)
+                + QDateTime::currentDateTime().toString()
+                + TEXT_BACK);
+
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
     html += TEXT_FRONT.arg(LEFT,FONT,TEXT_COLOR_3,FONT_SIZE)+"对方发送了文件["+ file+"]"+TEXT_BACK;
 
     ui->TEXT_MSG_RECORD->setHtml(
@@ -868,8 +880,19 @@ void MainWindow::slot_recv_file_success(const QString& file)
 
 void MainWindow::slot_recv_picture_success(const QString& file)
 {
+    m_is_open_source_mng = false;
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
-
+    m_is_open_source_mng = true;
+    /* 显示时间 */
+    if (m_is_show_time)
+    {
+        ui->TEXT_MSG_RECORD->setHtml(
+                    ui->TEXT_MSG_RECORD->toHtml()
+                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
+                    );
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
     QImage image(QString("./tmp/") + file);
 
     ui->TEXT_MSG_RECORD->setHtml(
