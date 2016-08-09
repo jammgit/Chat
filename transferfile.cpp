@@ -193,7 +193,6 @@ void TransferFile::slot_append_file_task(const QString &filepath)
     /* save */
     m_files[text.split("/").back()] = s.filepath;
 
-    qDebug() << text.split("/").back();
 
     m_pMutex->lock();
     m_tasklist.push_back(s);
