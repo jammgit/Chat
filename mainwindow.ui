@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>MainWindow</string>
+   <string>VideoChat</string>
   </property>
   <property name="windowIcon">
    <iconset resource="picture.qrc">
@@ -308,10 +308,10 @@
    <widget class="QPushButton" name="BTN_VIDEO">
     <property name="geometry">
      <rect>
-      <x>240</x>
-      <y>460</y>
-      <width>51</width>
-      <height>31</height>
+      <x>10</x>
+      <y>590</y>
+      <width>50</width>
+      <height>30</height>
      </rect>
     </property>
     <property name="text">
@@ -323,7 +323,7 @@
     </property>
     <property name="iconSize">
      <size>
-      <width>50</width>
+      <width>48</width>
       <height>48</height>
      </size>
     </property>
@@ -331,7 +331,7 @@
    <widget class="QSlider" name="SLIDER_VOICE">
     <property name="geometry">
      <rect>
-      <x>360</x>
+      <x>270</x>
       <y>450</y>
       <width>19</width>
       <height>140</height>
@@ -523,7 +523,7 @@
    <widget class="QSlider" name="SLIDER_VOICE_2">
     <property name="geometry">
      <rect>
-      <x>320</x>
+      <x>230</x>
       <y>450</y>
       <width>19</width>
       <height>140</height>
@@ -566,6 +566,16 @@
     </property>
     <property name="readOnly">
      <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QListView" name="LIST_COMBO">
+    <property name="geometry">
+     <rect>
+      <x>440</x>
+      <y>200</y>
+      <width>121</width>
+      <height>192</height>
+     </rect>
     </property>
    </widget>
   </widget>

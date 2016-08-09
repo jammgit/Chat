@@ -9,7 +9,26 @@ MyVideo_Send_Thread::MyVideo_Send_Thread(QVideoWidget*pwin, QObject* parent)
 {
 
 }
-
+MyVideo_Send_Thread::~MyVideo_Send_Thread()
+{
+    if (m_pSocket)
+    {
+        m_pSocket->deleteLater();
+        m_pSocket = nullptr;
+    }
+    if (m_pServer)
+    {
+        m_pServer->deleteLater();
+        m_pServer = nullptr;
+    }
+    if (m_pVideoSend)
+    {
+        m_pVideoSend->deleteLater();
+        m_pVideoSend = nullptr;
+    }
+    this->quit();
+    this->wait();
+}
 void MyVideo_Send_Thread::run()
 {
     if (!m_pServer)
@@ -37,24 +56,24 @@ void MyVideo_Send_Thread::run()
 
 void MyVideo_Send_Thread::slot_finished()
 {
-    if (m_pServer)
-    {
-        m_pServer->close();
-        delete m_pServer;
-        m_pServer = nullptr;
-    }
-    if (m_pSocket)
-    {
-        m_pSocket->close();
-        delete m_pSocket;
-        m_pSocket = nullptr;
-    }
+//    if (m_pServer)
+//    {
+//        m_pServer->close();
+//        delete m_pServer;
+//        m_pServer = nullptr;
+//    }
+//    if (m_pSocket)
+//    {
+//        m_pSocket->close();
+//        delete m_pSocket;
+//        m_pSocket = nullptr;
+//    }
 
-    if (m_pVideoSend)
-    {
-        delete m_pVideoSend;
-        m_pVideoSend = nullptr;
-    }
+//    if (m_pVideoSend)
+//    {
+//        delete m_pVideoSend;
+//        m_pVideoSend = nullptr;
+//    }
 }
 
 void MyVideo_Send_Thread::slot_new_connection()
@@ -86,11 +105,22 @@ VideoDisplay_Send::VideoDisplay_Send(QVideoWidget* pwin,QTcpSocket* socket, QObj
 
 VideoDisplay_Send::~VideoDisplay_Send()
 {
-    delete m_pImageCapture;
+    if (m_pTimer)
+    {
+        m_pTimer->deleteLater();
+        m_pTimer = nullptr;
+    }
+    if (m_pImageCapture)
+    {
+        m_pImageCapture->deleteLater();
+        m_pImageCapture = nullptr;
+    }
     if (m_pCamera)
     {
+        m_pCamera->stop();
         m_pCamera->setViewfinder((QVideoWidget*)nullptr);
-        delete m_pCamera;
+        m_pCamera->deleteLater();
+        m_pCamera = nullptr;
     }
 }
 
@@ -252,6 +282,12 @@ MyVideo_Recv_Thread::MyVideo_Recv_Thread(VideoDisplay_Recv*recv, QObject* parent
 
 }
 
+MyVideo_Recv_Thread::~MyVideo_Recv_Thread()
+{
+    this->quit();
+    this->wait();
+}
+
 void MyVideo_Recv_Thread::run()
 {
     m_pVideoRecv->Play();
@@ -271,6 +307,11 @@ VideoDisplay_Recv::VideoDisplay_Recv(const QHostAddress& addr, QObject*parent)
     : QObject(parent),m_addr(addr)
 {
     this->__Init();
+}
+
+VideoDisplay_Recv::~VideoDisplay_Recv()
+{
+
 }
 
 void VideoDisplay_Recv::__Init()

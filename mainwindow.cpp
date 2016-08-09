@@ -145,14 +145,24 @@ void MainWindow::__Init()
         fcom.open(QFile::ReadOnly);
         str = fcom.readAll();
         fcom.close();
-        ui->COMBO_DOWN_FILE_LIST->setStyleSheet("QComboBox {background-color:transparent;} "
-                                                " QToolTip {background-color:white;color:black;} ");
+
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
         ui->COMBO_DOWN_FILE_LIST->addItem(QString("Chat"));
         ui->COMBO_DOWN_FILE_LIST->addItem(QString("qrc_picture"));
 
-        ui->COMBO_DOWN_FILE_LIST->setLineEdit(ui->LINE_COMBO);
-        ui->COMBO_DOWN_FILE_LIST->lineEdit()->setStyleSheet("QLineEdit {background-color:transparent;} ");
 
+        ui->COMBO_DOWN_FILE_LIST->setLineEdit(ui->LINE_COMBO);
+        ui->COMBO_DOWN_FILE_LIST->lineEdit()->setStyleSheet("QLineEdit {background-color:transparent;} "
+                                                            "QLineEdit {border: 1px solid  #000000}");
+        ui->COMBO_DOWN_FILE_LIST->setView(ui->LIST_COMBO);
+        ui->COMBO_DOWN_FILE_LIST->view()->setStyleSheet("QListView {background-image: url(:/src/bg_4.png);}");
+
+        ui->COMBO_DOWN_FILE_LIST->setStyleSheet("QComboBox {background-color:transparent;}");
 
         this->setWindowFlags(Qt::FramelessWindowHint );//无边框
         /* 设置阴影必须带上这一句 */
@@ -184,11 +194,11 @@ void MainWindow::__Init()
     m_pPicClient = nullptr;
 
     /* 视频:发送(服务端) */
-    QVideoWidget *w = new QVideoWidget(ui->LABEL_SELF);
-    w->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
-    m_pVideoSend = new MyVideo_Send_Thread(w,this);
-    m_pVideoSend->start();
-    m_pVideoRecv = nullptr;
+//    QVideoWidget *w = new QVideoWidget(ui->LABEL_SELF);
+//    w->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
+//    m_pVideoSend = new MyVideo_Send_Thread(w,this);
+//    m_pVideoSend->start();
+//    m_pVideoRecv = nullptr;
     /* 视频:接受是主动连接端，在主动连接时再创建 */
 
 
@@ -339,17 +349,7 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     ip[iplen] = '\0';
     qDebug() << QString(ip);
     m_peerhost.address = QString(ip);
-    /* create file , picture socket */
-    //emit this->signal_create_socket(QHostAddress(QString(ip)));
     /* 建立三个必须的连接连接 */
-    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
-    if (!b)
-    {
-        QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
-        ui->LIST_HOST->setEnabled(true);
-        return;
-    }
-
     if (!m_pFileClient)
     {
         m_pFileClient = new MyFileThread_Client(this, QHostAddress(QString(ip)));
@@ -372,7 +372,13 @@ void MainWindow::on_LIST_HOST_doubleClicked(const QModelIndex &index)
     }
     m_pPicClient->start();
 
-
+    bool b = m_pTextChat->ConnectHost(QHostAddress(QString(ip)));
+    if (!b)
+    {
+        QMessageBox::information(nullptr, "网络错误", "建立网络连接出现错误，请重试");
+        ui->LIST_HOST->setEnabled(true);
+        return;
+    }
 
 
 }
@@ -433,8 +439,7 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
         m_pPicServer->start();
     }
 
-//    m_pFileChat->stop();
-//    m_pPicChat->stop();
+
 
     QMessageBox::information(this, "提示", "聊天结束");
     this->__Set_Session(false);
@@ -489,7 +494,7 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
-
+/* 发送文件 */
 void MainWindow::on_BTN_FILE_clicked()
 {
     if (m_is_show_time)
@@ -561,21 +566,7 @@ void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1
 void MainWindow::on_BTN_WINDOW_CLOSE_clicked()
 {
     m_pTextChat->Close();
-    m_pVideoSend->exit();
-    if (m_pFileServer)
-    {
-        m_pFileServer->exit();
-        delete m_pFileServer;
-        m_pFileServer = nullptr;
-    }
-    if (m_pFileClient)
-    {
-        m_pFileClient->exit();
-        delete m_pFileClient;
-        m_pFileClient = nullptr;
-    }
-//    m_pFileChat->stop();
-//    m_pPicChat->stop();
+
     this->close();
 }
 
@@ -676,9 +667,7 @@ void MainWindow::on_BTN_SHAKE_clicked()
 /* 对端关闭连接 */
 void MainWindow::slot_peer_close()
 {
-//    m_pPicChat->stop();
-//    m_pFileChat->stop();
-
+    m_pTextChat->Close();
     if (m_pFileClient)
     {
         m_pFileClient->exit();
@@ -689,6 +678,17 @@ void MainWindow::slot_peer_close()
     {
         m_pFileServer->exit();
         m_pFileServer->start();
+    }
+    if (m_pPicClient)
+    {
+        m_pPicClient->exit();
+        delete m_pPicClient;
+        m_pPicClient = nullptr;
+    }
+    if (m_pPicServer)
+    {
+        m_pPicServer->exit();
+        m_pPicServer->start();
     }
 
     QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
@@ -750,6 +750,11 @@ void MainWindow::slot_request_arrive(QString text, QMessageBox::StandardButton &
             m_pFileServer->exit();
             m_pFileServer->start();
         }
+        if (m_pPicServer)
+        {
+            m_pPicServer->exit();
+            m_pPicServer->start();
+        }
     }
 
 }
@@ -767,11 +772,11 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->LIST_HOST->setEnabled(false);
 
         /* 视频接受 */
-        m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
-        connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
-                this, SLOT(slot_get_image(QImage)));
-        m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay,this);
-        m_pVideoRecv->start();
+//        m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
+//        connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
+//                this, SLOT(slot_get_image(QImage)));
+//        m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay,this);
+//        m_pVideoRecv->start();
 
     }
     else
@@ -784,6 +789,12 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
             m_pFileClient->exit();
             delete m_pFileClient;
             m_pFileClient = nullptr;
+        }
+        if (m_pPicClient)
+        {
+            m_pPicClient->exit();
+            delete m_pPicClient;
+            m_pPicClient = nullptr;
         }
     }
 }
@@ -806,6 +817,17 @@ void MainWindow::slot_send_error()
     {
         m_pFileServer->exit();
         m_pFileServer->start();
+    }
+    if (m_pPicClient)
+    {
+        m_pPicClient->exit();
+        delete m_pPicClient;
+        m_pPicClient = nullptr;
+    }
+    if (m_pPicServer)
+    {
+        m_pPicServer->exit();
+        m_pPicServer->start();
     }
 }
 

@@ -34,6 +34,7 @@ class MyPictureThread_Client : public QThread
     Q_OBJECT
 public:
     explicit MyPictureThread_Client(QObject*pwin, const QHostAddress& addr, QObject* parent=0);
+    ~MyPictureThread_Client();
 
 protected:
     void run();
@@ -57,7 +58,7 @@ class MyPictureThread_Server : public QThread
     Q_OBJECT
 public:
     explicit MyPictureThread_Server(QObject*pwin, QObject* parent=0);
-
+    ~MyPictureThread_Server();
 protected:
     void run();
 

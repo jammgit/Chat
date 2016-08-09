@@ -9,6 +9,22 @@ MyPictureThread_Client::MyPictureThread_Client(QObject*pwin, const QHostAddress&
 
 }
 
+MyPictureThread_Client::~MyPictureThread_Client()
+{
+    if (m_pSocket)
+    {
+        m_pSocket->deleteLater();
+        m_pSocket = nullptr;
+    }
+    if (m_pPicSrv)
+    {
+        m_pPicSrv->deleteLater();
+        m_pPicSrv = nullptr;
+    }
+    this->quit();
+    this->wait();
+}
+
 void MyPictureThread_Client::run()
 {
     m_pSocket = new QTcpSocket();
@@ -39,13 +55,12 @@ void MyPictureThread_Client::slot_finished()
 {
     if (m_pSocket)
     {
-        m_pSocket->close();
-        delete m_pSocket;
+        m_pSocket->deleteLater();
         m_pSocket = nullptr;
     }
     if (m_pPicSrv)
     {
-        delete m_pPicSrv;
+        m_pPicSrv->deleteLater();
         m_pPicSrv = nullptr;
     }
 }
@@ -58,6 +73,27 @@ MyPictureThread_Server::MyPictureThread_Server(QObject*pwin, QObject* parent)
       m_pWin(pwin),m_pPicSrv(nullptr)
 {
 
+}
+
+MyPictureThread_Server::~MyPictureThread_Server()
+{
+    if (m_pListen)
+    {
+        m_pListen->deleteLater();
+        m_pListen = nullptr;
+    }
+    if (m_pSocket)
+    {
+        m_pSocket->deleteLater();
+        m_pSocket = nullptr;
+    }
+    if (m_pPicSrv)
+    {
+        m_pPicSrv->deleteLater();
+        m_pPicSrv = nullptr;
+    }
+    this->quit();
+    this->wait();
 }
 
 void MyPictureThread_Server::run()
@@ -108,21 +144,14 @@ void MyPictureThread_Server::slot_new_connection()
 
 void MyPictureThread_Server::slot_finished()
 {/* 不需要关闭监听套接字 */
-//    if (m_pListen)
-//    {
-//        m_pListen->close();
-//        delete m_pListen;
-//        m_pListen = nullptr;
-//    }
     if (m_pSocket)
     {
-        m_pSocket->close();
-        delete m_pSocket;
+        m_pSocket->deleteLater();
         m_pSocket = nullptr;
     }
     if (m_pPicSrv)
     {
-        delete m_pPicSrv;
+        m_pPicSrv->deleteLater();
         m_pPicSrv = nullptr;
     }
 }

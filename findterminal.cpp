@@ -121,9 +121,10 @@ void FindTerminal::__Recv_Msg(QUdpSocket *socket, QHostAddress *address)
             *address = addr;
         /* 忽略自己发送的多播信息 */
         foreach (QHostAddress a, m_host.addresses()) {
-            if (a.toString() == addr.toString())
+            if (a.toString() == addr.toString() ||
+                    strncmp(a.toString().toStdString().c_str(), "127",3)==0)
             {
-                qDebug() << "Equal local host";
+                qDebug() << "local host";
                 return;
             }
         }

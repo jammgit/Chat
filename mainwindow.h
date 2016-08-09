@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QLineEdit>
 #include <QScrollBar>
+#include <QListView>
 #include <QtMath>
 #include <QGraphicsDropShadowEffect>
 #include <string>

@@ -34,6 +34,7 @@ class MyFileThread_Client : public QThread
     Q_OBJECT
 public:
     explicit MyFileThread_Client(QObject*pwin, const QHostAddress& addr, QObject* parent=0);
+    ~MyFileThread_Client();
 
 protected:
     void run();
@@ -57,6 +58,8 @@ class MyFileThread_Server : public QThread
     Q_OBJECT
 public:
     explicit MyFileThread_Server(QObject*pwin, QObject* parent=0);
+
+    ~MyFileThread_Server();
 
 protected:
     void run();

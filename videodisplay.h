@@ -56,6 +56,7 @@ class MyVideo_Send_Thread : public QThread
 public:
     explicit MyVideo_Send_Thread(QVideoWidget*pwin, QObject* parent=0);
 
+    ~MyVideo_Send_Thread();
 protected:
     void run();
 
@@ -126,11 +127,7 @@ class MyVideo_Recv_Thread : public QThread
 public:
     explicit MyVideo_Recv_Thread(VideoDisplay_Recv*recv, QObject* parent=0);
 
-    /* 因为接受视频时，线程无线阻塞，则在线程里面创建的信号槽无法生效,必须在主线程connect */
-    VideoDisplay_Recv* GetVideoDisplay()
-    {
-        return m_pVideoRecv;
-    }
+    ~MyVideo_Recv_Thread();
 
 protected:
     void run();
@@ -152,10 +149,8 @@ class VideoDisplay_Recv : public QObject
     Q_OBJECT
 public:
     VideoDisplay_Recv(const QHostAddress& addr, QObject*parent = nullptr);
-    ~VideoDisplay_Recv()
-    {
+    ~VideoDisplay_Recv();
 
-    }
 signals:
     void signal_get_image(const QImage& image);
 

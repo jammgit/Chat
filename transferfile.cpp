@@ -9,6 +9,22 @@ MyFileThread_Client::MyFileThread_Client(QObject*pwin, const QHostAddress& addr,
 
 }
 
+MyFileThread_Client::~MyFileThread_Client()
+{
+    if (m_pSocket)
+    {
+        m_pSocket->deleteLater();
+        m_pSocket = nullptr;
+    }
+    if (m_pFileSrv)
+    {
+        m_pFileSrv->deleteLater();
+        m_pFileSrv = nullptr;
+    }
+    this->quit();
+    this->wait();
+}
+
 void MyFileThread_Client::run()
 {
     m_pSocket = new QTcpSocket();
@@ -39,13 +55,12 @@ void MyFileThread_Client::slot_finished()
 {
     if (m_pSocket)
     {
-        m_pSocket->close();
-        delete m_pSocket;
+        m_pSocket->deleteLater();
         m_pSocket = nullptr;
     }
     if (m_pFileSrv)
     {
-        delete m_pFileSrv;
+        m_pFileSrv->deleteLater();
         m_pFileSrv = nullptr;
     }
 }
@@ -58,6 +73,27 @@ MyFileThread_Server::MyFileThread_Server(QObject*pwin, QObject* parent)
       m_pWin(pwin),m_pFileSrv(nullptr)
 {
 
+}
+
+MyFileThread_Server::~MyFileThread_Server()
+{
+    if (m_pListen)
+    {
+        m_pListen->deleteLater();
+        m_pListen = nullptr;
+    }
+    if (m_pSocket)
+    {
+        m_pSocket->deleteLater();
+        m_pSocket = nullptr;
+    }
+    if (m_pFileSrv)
+    {
+        m_pFileSrv->deleteLater();
+        m_pFileSrv = nullptr;
+    }
+    this->quit();
+    this->wait();
 }
 
 void MyFileThread_Server::run()
@@ -108,21 +144,14 @@ void MyFileThread_Server::slot_new_connection()
 
 void MyFileThread_Server::slot_finished()
 {/* 不需要关闭监听套接字 */
-//    if (m_pListen)
-//    {
-//        m_pListen->close();
-//        delete m_pListen;
-//        m_pListen = nullptr;
-//    }
     if (m_pSocket)
     {
-        m_pSocket->close();
-        delete m_pSocket;
+        m_pSocket->deleteLater();
         m_pSocket = nullptr;
     }
     if (m_pFileSrv)
     {
-        delete m_pFileSrv;
+        m_pFileSrv->deleteLater();
         m_pFileSrv = nullptr;
     }
 }
