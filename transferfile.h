@@ -19,7 +19,13 @@
 #include <QTimer>
 #include <stdio.h>
 #include <stdlib.h>
+
+#ifdef Q_OS_WIN32
 #include <winsock.h>
+#else
+#include <arpa/inet.h>
+#endif
+
 #include "msginfo.h"
 
 

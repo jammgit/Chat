@@ -206,9 +206,22 @@ void TransferFile::slot_append_file_task(const QString &filepath)
 
 void TransferFile::slot_recv_file()
 {
+    static char buff_for_buff[1460]; //QTcpSocket read不会一定但会返回包大小的整数倍
+    static int idx_for_buffer = 0;
+    static int pack_size = BUFFER_LEN + sizeof(chat_file_pack_t);
+
     char buffer[32767];
-    qint64 ret = m_pSocket->read(buffer, 32766);
-    buffer[ret] = '\0';
+    /* 将上次不完整的包拼接起来 */
+    strncpy(buffer, buff_for_buff, idx_for_buffer);
+    qint64 ret = m_pSocket->read(buffer+idx_for_buffer, 32767-idx_for_buffer);
+    /* 将尾部不完整的包保存起来 */
+    idx_for_buffer = (idx_for_buffer+ret) % pack_size;
+    /* 接下来实际要处理的数据量while */
+    ret = (idx_for_buffer+ret)/pack_size*pack_size;
+
+    strncpy(buff_for_buff, buffer+ret, idx_for_buffer);
+    //qDebug() << "recv bytes:" << ret-idx_for_buffer;
+
 
     int idx = 0;
 
@@ -252,7 +265,7 @@ void TransferFile::slot_recv_file()
             m_recv_file = nullptr;
 
         }
-        idx += sizeof(chat_pic_pack_t)+dlen;
+        idx += (sizeof(chat_pic_pack_t)+dlen);
 
     }
 }
@@ -290,9 +303,13 @@ void TransferFile::slot_send_file()
                 /* 计算文件名、数据总长度 */
                 m_pSendPack->data_used_len = m_send_file_name.length()+size;
                 /* 转换网络字节序 */
+                qDebug() << "data_used_len:" << m_pSendPack->data_used_len;
                 m_pSendPack->data_used_len = htons(m_pSendPack->data_used_len);
                 m_pSendPack->file_name_len = htons(m_pSendPack->file_name_len);
 
+                qDebug() << "should be send bytes:" << sizeof(chat_file_pack_t)+
+                            m_send_file_name.length()+
+                            size;
                 ret = m_pSocket->write((char *)m_pSendPack, sizeof(chat_file_pack_t)+
                                                             m_send_file_name.length()+
                                                             size);
