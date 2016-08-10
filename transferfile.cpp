@@ -215,7 +215,8 @@ void TransferFile::slot_recv_file()
     /* 将上次不完整的包拼接起来 */
     strncpy(buffer, buff_for_buff, idx_for_buffer);
 
-    qint64 ret = m_pSocket->read(buffer+idx_for_buffer, m_pSocket->bytesAvailable());
+
+    qint64 ret = m_pSocket->read(buffer+idx_for_buffer, 32767-idx_for_buffer);
 
     int idx = 0;
     /* 实际要处理的数据量 */

@@ -58,13 +58,12 @@ class MyVideo_Send_Thread : public QThread
 {
     Q_OBJECT
 public:
-    explicit MyVideo_Send_Thread(QVideoWidget*pwin, QObject* parent=0);
+    explicit MyVideo_Send_Thread(VideoDisplay_Send* send, QObject* parent=0);
 
     ~MyVideo_Send_Thread();
 protected:
     void run();
 
-//    void finish();
 
 protected slots:
     void slot_finished();
@@ -76,7 +75,6 @@ protected slots:
 private:
     QTcpSocket         * m_pSocket;
     QTcpServer         * m_pServer;
-    QVideoWidget       * m_pWin;
 
     VideoDisplay_Send  * m_pVideoSend;
 
@@ -92,26 +90,29 @@ class VideoDisplay_Send : public QObject
 {
     Q_OBJECT
 public:
-    explicit VideoDisplay_Send(QVideoWidget* pwin,QTcpSocket* socket, QObject *parent = 0);
+    explicit VideoDisplay_Send(QVideoWidget* pwin, QObject *parent = 0);
     ~VideoDisplay_Send();
-
-    void Start();
-    void Stop();
+    /* 传视频流(包括打开摄像头) */
+    void Start(QTcpSocket* socket);
+    /* 开关摄像头 */
+    void OpenCamrea();
+    void CloseCamera();
 
 private:
     /* 初始化摄像头 */
     void __Init_Camera();
 
 signals:
+    void signal_peer_close();
+
+public:
+
 
 private slots:
     /* 获取一张图片 */
     void slot_capture_image(int, QImage image);
 
-    void slot_close_camera();
-
-    void slot_open_camera();
-
+    /* 超时截图 */
     void slot_capture_image();
 
 private:

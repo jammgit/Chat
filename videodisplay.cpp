@@ -3,9 +3,8 @@
 ///////////////////////////////////////////////////////////////////////
 /// MyVideo_Send_Thread
 ///////////////////////////////////////////////////////////////////////////
-MyVideo_Send_Thread::MyVideo_Send_Thread(QVideoWidget*pwin, QObject* parent)
-    : QThread(parent),m_pSocket(nullptr),m_pServer(nullptr),m_pWin(pwin),
-      m_pVideoSend(nullptr)
+MyVideo_Send_Thread::MyVideo_Send_Thread(VideoDisplay_Send* send, QObject* parent)
+    : QThread(parent),m_pSocket(nullptr),m_pServer(nullptr),m_pVideoSend(send)
 {
 
 }
@@ -31,6 +30,7 @@ MyVideo_Send_Thread::~MyVideo_Send_Thread()
 }
 void MyVideo_Send_Thread::run()
 {
+    qDebug() << "start";
     if (!m_pServer)
     {
         m_pServer = new QTcpServer();
@@ -54,10 +54,6 @@ void MyVideo_Send_Thread::run()
     this->exec();
 }
 
-//void MyVideo_Send_Thread::finish()
-//{
-//    this->slot_finished();
-//}
 
 void MyVideo_Send_Thread::slot_finished()
 {
@@ -66,6 +62,11 @@ void MyVideo_Send_Thread::slot_finished()
     {
         m_pSocket->deleteLater();
         m_pSocket = nullptr;
+    }
+    if (m_pServer)
+    {
+        m_pServer->deleteLater();
+        m_pServer = nullptr;
     }
     if (m_pVideoSend)
     {
@@ -76,6 +77,7 @@ void MyVideo_Send_Thread::slot_finished()
 
 void MyVideo_Send_Thread::slot_new_connection()
 {
+    qDebug() << "new connect";
     if (m_pServer->hasPendingConnections())
     {
         m_pSocket = m_pServer->nextPendingConnection();
@@ -85,9 +87,11 @@ void MyVideo_Send_Thread::slot_new_connection()
             QMessageBox::information(nullptr, "错误", "返回连接时错误");
             exit(0);
         }
-
-        m_pVideoSend = new VideoDisplay_Send(m_pWin, m_pSocket);
-        m_pVideoSend->Start();
+        qDebug() << "have socket";
+        if (m_pVideoSend)
+        {
+            m_pVideoSend->Start(m_pSocket);
+        }
     }
 }
 
@@ -96,8 +100,8 @@ void MyVideo_Send_Thread::slot_new_connection()
 ///////////////////////////////////////////////////////////////////////////////
 /// VideoDisplay_Send
 /// ///////////////////////////////////////////////////////////////////////////
-VideoDisplay_Send::VideoDisplay_Send(QVideoWidget* pwin,QTcpSocket* socket, QObject *parent)
-    : QObject(parent),m_pWin(pwin),m_pSocket(socket)
+VideoDisplay_Send::VideoDisplay_Send(QVideoWidget* pwin,QObject *parent)
+    : QObject(parent),m_pWin(pwin),m_pSocket(nullptr)
 {
     this->__Init_Camera();
 }
@@ -132,8 +136,6 @@ void VideoDisplay_Send::__Init_Camera()
     m_pCamera->setViewfinder(m_pWin);
 
 
-    m_pCamera->start();
-
     m_pTimer = new QTimer;
 
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(slot_capture_image()));
@@ -142,24 +144,39 @@ void VideoDisplay_Send::__Init_Camera()
             this, SLOT(slot_capture_image(int,QImage)));
 }
 
-void VideoDisplay_Send::Start()
+
+
+void VideoDisplay_Send::Start(QTcpSocket* socket)
 {
-    m_pTimer->start(50);
+    m_pSocket = socket;
+    if (m_pSocket)
+    {
+        m_pCamera->start();
+        m_pTimer->start(50);
+    }
 }
 
-void VideoDisplay_Send::Stop()
-{
-    m_pTimer->stop();
-}
 
 void VideoDisplay_Send::slot_capture_image()
 {
     m_pImageCapture->capture();
 }
 
-/* 获取一张图片 */
+void VideoDisplay_Send::CloseCamera()
+{
+    m_pCamera->stop();
+}
+
+void VideoDisplay_Send::OpenCamrea()
+{
+    m_pCamera->start();
+}
+
+/* 获取一张图片,并发送 */
 void VideoDisplay_Send::slot_capture_image(int,QImage image)
 {
+
+    qDebug() << "image";
     if (!m_pSocket)
         return;
     int w = image.width();
@@ -254,7 +271,6 @@ void VideoDisplay_Send::slot_capture_image(int,QImage image)
     pic_in.i_pts = i_pts++;
     x264_encoder_encode(encoder, &nals, &nnal, &pic_in, &pic_out);
     x264_nal_t *nal;
-    //FILE *file = fopen("me.h264", "ab+");
     for (nal = nals; nal < nals + nnal; nal++)
     {
       if (m_pSocket)
@@ -262,23 +278,24 @@ void VideoDisplay_Send::slot_capture_image(int,QImage image)
           qint64 ret = m_pSocket->write(reinterpret_cast<const char *>(nal->p_payload), nal->i_payload);
 
           if (ret < 0)
-              qDebug() << ret;
+          {
+              qDebug() << "peer close";
+              m_pSocket = nullptr;
+              //m_pTimer->stop();                     //timer cannot stop from another thread
+              emit this->signal_peer_close();
+              break;
+          }
+          else if (ret == 0)
+          {
+              qDebug() << "no buffer";
+          }
       }
-      //qDebug() << "["<<nal->i_payload<<"]";
-      //fwrite(reinterpret_cast<const char *>(nal->p_payload),1,nal->i_payload,file);
     }
-    //fclose(file);
-}
 
-void VideoDisplay_Send::slot_close_camera()
-{
 
 }
 
-void VideoDisplay_Send::slot_open_camera()
-{
 
-}
 
 ////////////////////////////////////////////////////////////////////////////
 /// MyVideo_Recv_Thread
@@ -299,7 +316,6 @@ MyVideo_Recv_Thread::~MyVideo_Recv_Thread()
 void MyVideo_Recv_Thread::run()
 {
     m_pVideoRecv->Play();
-//    this->exec();
 }
 
 void MyVideo_Recv_Thread::slot_finished()

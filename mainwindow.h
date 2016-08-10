@@ -146,9 +146,12 @@ private:
     MyPictureThread_Client      * m_pPicClient;
     MyPictureThread_Server      * m_pPicServer;
     /* 视频服务 */
-    MyVideo_Send_Thread         * m_pVideoSend;
-    MyVideo_Recv_Thread         * m_pVideoRecv;
-    VideoDisplay_Recv           * m_pRecvDisplay;
+    QVideoWidget                * m_widget;
+    MyVideo_Send_Thread         * m_pVideoSend_thread;
+    VideoDisplay_Send           * m_pVideoSend;
+    MyVideo_Recv_Thread         * m_pVideoRecv_thread;
+    VideoDisplay_Recv           * m_pVideoRecv;
+
 
 };
 

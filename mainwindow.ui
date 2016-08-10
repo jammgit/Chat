@@ -308,8 +308,8 @@
    <widget class="QPushButton" name="BTN_VIDEO">
     <property name="geometry">
      <rect>
-      <x>10</x>
-      <y>590</y>
+      <x>230</x>
+      <y>450</y>
       <width>50</width>
       <height>30</height>
      </rect>
@@ -319,26 +319,13 @@
     </property>
     <property name="icon">
      <iconset resource="picture.qrc">
-      <normaloff>:/src/closevideo.png</normaloff>:/src/closevideo.png</iconset>
+      <normaloff>:/src/openvideo.png</normaloff>:/src/openvideo.png</iconset>
     </property>
     <property name="iconSize">
      <size>
       <width>48</width>
       <height>48</height>
      </size>
-    </property>
-   </widget>
-   <widget class="QSlider" name="SLIDER_VOICE">
-    <property name="geometry">
-     <rect>
-      <x>270</x>
-      <y>450</y>
-      <width>19</width>
-      <height>140</height>
-     </rect>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
     </property>
    </widget>
    <widget class="QPushButton" name="BTN_SEND_EMOJI">
@@ -518,19 +505,6 @@
       <width>35</width>
       <height>35</height>
      </size>
-    </property>
-   </widget>
-   <widget class="QSlider" name="SLIDER_VOICE_2">
-    <property name="geometry">
-     <rect>
-      <x>230</x>
-      <y>450</y>
-      <width>19</width>
-      <height>140</height>
-     </rect>
-    </property>
-    <property name="orientation">
-     <enum>Qt::Vertical</enum>
     </property>
    </widget>
    <widget class="QComboBox" name="COMBO_DOWN_FILE_LIST">

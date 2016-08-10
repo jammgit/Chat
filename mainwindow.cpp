@@ -179,12 +179,19 @@ void MainWindow::__Init()
     m_pPicServer->start();
     m_pPicClient = nullptr;
 
-    /* 视频:发送(服务端) */
-//    QVideoWidget *w = new QVideoWidget(ui->LABEL_SELF);
-//    w->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
-//    m_pVideoSend = new MyVideo_Send_Thread(w,this);
-//    m_pVideoSend->start();
-//    m_pVideoRecv = nullptr;
+    /* 视频:发送(服务端):1.创建摄像头 */
+    m_widget = new QVideoWidget(ui->LABEL_SELF);
+    m_widget->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
+    m_pVideoSend = new VideoDisplay_Send(m_widget);
+    m_pVideoSend->OpenCamrea();
+    connect(m_pVideoSend, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
+    /* 将摄像头资源也传给子线程，当传输视频时通过子线程提供的socket进行传输 */
+    m_pVideoSend_thread = new MyVideo_Send_Thread(m_pVideoSend,this);
+    m_pVideoSend->moveToThread(m_pVideoSend_thread);
+    m_pVideoSend_thread->start();
+
+    m_pVideoRecv_thread = nullptr;
+    m_pVideoRecv = nullptr;
     /* 视频:接受是主动连接端，在主动连接时再创建 */
 
 
@@ -428,9 +435,22 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
         m_pPicServer->exit();
         m_pPicServer->start();
     }
+    if (m_pVideoSend_thread)
+    {
+        m_pVideoSend_thread->exit();
+        m_pVideoSend_thread->start();
+    }
 
-
-
+    if (m_pVideoRecv)
+    {
+        delete m_pVideoRecv;
+        m_pVideoRecv = nullptr;
+    }
+    if (m_pVideoRecv_thread)
+    {
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
+    }
 
     QMessageBox::information(this, "提示", "聊天结束");
     this->__Set_Session(false);
@@ -565,8 +585,22 @@ void MainWindow::on_BTN_MIN_clicked()
 /* 关闭，开启摄像头 */
 void MainWindow::on_BTN_VIDEO_clicked()
 {
-
-
+    static bool open = false;
+    if (open)
+    {
+        QPalette p;
+        p.setBrush(QPalette::Button, QBrush(QPixmap("/src/openvideo.png")));
+        ui->BTN_VIDEO->setPalette(p);
+        m_pVideoSend->OpenCamrea();
+    }
+    else
+    {
+        QPalette p;
+        p.setBrush(QPalette::Button, QBrush(QPixmap("/src/closevideo.png")));
+        ui->BTN_VIDEO->setPalette(p);
+        m_pVideoSend->CloseCamera();
+    }
+    open = !open;
 }
 
 
@@ -675,7 +709,21 @@ void MainWindow::slot_peer_close()
         m_pPicServer->exit();
         m_pPicServer->start();
     }
-
+    if (m_pVideoSend_thread)
+    {
+        m_pVideoSend_thread->exit();
+        m_pVideoSend_thread->start();
+    }
+    if (m_pVideoRecv)
+    {
+        delete m_pVideoRecv;
+        m_pVideoRecv = nullptr;
+    }
+    if (m_pVideoRecv_thread)
+    {
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
+    }
     QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
@@ -757,11 +805,11 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->LIST_HOST->setEnabled(false);
 
         /* 视频接受 */
-//        m_pRecvDisplay = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
-//        connect(m_pRecvDisplay, SIGNAL(signal_get_image(QImage)),
-//                this, SLOT(slot_get_image(QImage)));
-//        m_pVideoRecv = new MyVideo_Recv_Thread(m_pRecvDisplay,this);
-//        m_pVideoRecv->start();
+        m_pVideoRecv = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
+        connect(m_pVideoRecv, SIGNAL(signal_get_image(QImage)),
+                this, SLOT(slot_get_image(QImage)));
+        m_pVideoRecv_thread = new MyVideo_Recv_Thread(m_pVideoRecv,this);
+        m_pVideoRecv_thread->start();
 
     }
     else
@@ -815,6 +863,21 @@ void MainWindow::slot_send_error()
     {
         m_pPicServer->exit();
         m_pPicServer->start();
+    }
+    if (m_pVideoSend_thread)
+    {
+        m_pVideoSend_thread->exit();
+        m_pVideoSend_thread->start();
+    }
+    if (m_pVideoRecv)
+    {
+        delete m_pVideoRecv;
+        m_pVideoRecv = nullptr;
+    }
+    if (m_pVideoRecv_thread)
+    {
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
     }
 }
 
