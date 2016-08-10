@@ -149,7 +149,7 @@ void MainWindow::__Init()
 
         ui->COMBO_DOWN_FILE_LIST->setStyleSheet("QComboBox {background-color:transparent;}");
 
-        this->setWindowFlags(Qt::FramelessWindowHint );//无边框
+        this->setWindowFlags(Qt::FramelessWindowHint);//无边框
         /* 设置阴影必须带上这一句 */
         //this->setAttribute(Qt::WA_TranslucentBackground);
         /* 直接使用资源文件的资源，路径则为... */

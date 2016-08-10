@@ -294,7 +294,7 @@ void TransferPic::slot_send_file()
                 else
                     m_pSendPack->is_finish = htons(0);
 
-                m_pSendPack->data[(int)m_pSendPack->file_name_len+size] = '\0';
+                //m_pSendPack->data[(int)m_pSendPack->file_name_len+size] = '\0';
                 /* 复制文件名 */
                 strncpy(m_pSendPack->data,m_send_file_name.toStdString().c_str(),
                         static_cast<size_t>( m_pSendPack->file_name_len));

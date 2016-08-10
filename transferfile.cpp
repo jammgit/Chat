@@ -197,7 +197,7 @@ void TransferFile::slot_append_file_task(const QString &filepath)
     /* save */
     m_files[text.split("/").back()] = s.filepath;
 
-
+    /* 添加到任务队列 */
     m_pMutex->lock();
     m_tasklist.push_back(s);
     m_pMutex->unlock();
@@ -206,6 +206,7 @@ void TransferFile::slot_append_file_task(const QString &filepath)
 
 void TransferFile::slot_recv_file()
 {
+
     static char buff_for_buff[1460]; //QTcpSocket read不会一定但会返回包大小的整数倍
     static int idx_for_buffer = 0;
     static int pack_size = BUFFER_LEN + sizeof(chat_file_pack_t);
@@ -213,61 +214,70 @@ void TransferFile::slot_recv_file()
     char buffer[32767];
     /* 将上次不完整的包拼接起来 */
     strncpy(buffer, buff_for_buff, idx_for_buffer);
-    qint64 ret = m_pSocket->read(buffer+idx_for_buffer, 32767-idx_for_buffer);
-    /* 将尾部不完整的包保存起来 */
-    idx_for_buffer = (idx_for_buffer+ret) % pack_size;
-    /* 接下来实际要处理的数据量while */
-    ret = (idx_for_buffer+ret)/pack_size*pack_size;
 
-    strncpy(buff_for_buff, buffer+ret, idx_for_buffer);
-    //qDebug() << "recv bytes:" << ret-idx_for_buffer;
-
+    qint64 ret = m_pSocket->read(buffer+idx_for_buffer, m_pSocket->bytesAvailable());
 
     int idx = 0;
-
+    /* 实际要处理的数据量 */
+    ret += idx_for_buffer;
+    /* 重新初始化buff_for_buff计数器 */
+    idx_for_buffer = 0;
     while ((qint64)idx < ret)
     {
         m_pRecvPack = reinterpret_cast<chat_pic_pack_t*>(buffer+idx);
-        /* 提取出本条数据所属的文件 */
-        int flen = ntohs(m_pRecvPack->file_name_len);
-        char buf[256];
-        strncpy(buf, m_pRecvPack->data, flen);
-        buf[flen] = '\0';
-        QString fname(buf);
-        int dlen = ntohs(m_pRecvPack->data_used_len);
-
-        if (m_recv_file_name.size() == 0)   /* 刚创建文件的数据 */
+        /* 不是一个包大小（1030）的包可能是不完整或者是文件结尾的包，若是前者则需要保存不做处理 */
+        if ((ret-idx < sizeof(chat_file_pack_t))          //连包头都不完整,此时调用is_finish有可能异常
+                || ((ntohs(m_pRecvPack->is_finish) == 0)
+                    && (ret-idx < pack_size)))
+        {/* 将结尾不完整的包保存起来 */
+            idx_for_buffer = ret-idx;
+            strncpy(buff_for_buff, buffer+idx, idx_for_buffer);
+            break;
+        }
+        else
         {
-            m_recv_file_name = fname;
-            m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab+");
-            if (m_recv_file)
+            /* 提取出本条数据所属的文件 */
+            int flen = ntohs(m_pRecvPack->file_name_len);
+            char buf[256];
+            strncpy(buf, m_pRecvPack->data, flen);
+            buf[flen] = '\0';
+            QString fname(buf);
+            int dlen = ntohs(m_pRecvPack->data_used_len);
+
+            if (m_recv_file_name.size() == 0)   /* 刚创建文件的数据 */
             {
-                fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
+                m_recv_file_name = QString("./tmp/");
+                m_recv_file_name.append(fname);
+                m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab+");
+                if (m_recv_file)
+                {
+                    fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
+                }
+                else
+                    qDebug() << "write not opened file";
             }
-            else
-                qDebug() << "write not opened file";
-        }
-        else if (m_recv_file_name == fname) /* 还是已创建文件的数据 */
-        {
-            if (m_recv_file)
-                fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
-            else
-                qDebug() << "write not opened file";
+            else if (m_recv_file_name == fname) /* 还是已创建文件的数据 */
+            {
+                if (m_recv_file)
+                    fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
+                else
+                    qDebug() << "write not opened file";
 
-        }
+            }
 
-        /* 判断文件是否接受完毕 */
-        if (ntohs(m_pRecvPack->is_finish) == 1)
-        {
-            emit this->signal_recv_file_success(m_recv_file_name);
-            m_recv_file_name.clear();
-            fclose(m_recv_file);
-            m_recv_file = nullptr;
+            /* 判断文件是否接受完毕 */
+            if (ntohs(m_pRecvPack->is_finish) == 1)
+            {
+                emit this->signal_recv_file_success(m_recv_file_name);
+                m_recv_file_name.clear();
+                fclose(m_recv_file);
+                m_recv_file = nullptr;
 
-        }
-        idx += (sizeof(chat_pic_pack_t)+dlen);
+            }
+            idx += (sizeof(chat_pic_pack_t)+dlen);
+        }//else
 
-    }
+    }//while
 }
 
 void TransferFile::slot_send_file()
@@ -284,7 +294,7 @@ void TransferFile::slot_send_file()
         {
             if (!feof(m_send_file))
             {
-                m_pSendPack->file_name_len = static_cast<short>(m_send_file_name.length());
+                m_pSendPack->file_name_len = static_cast<unsigned short>(m_send_file_name.length());
 
                 size_t size = fread(m_pSendPack->data+(int)m_pSendPack->file_name_len,
                                     1,
@@ -292,11 +302,17 @@ void TransferFile::slot_send_file()
                                     m_send_file);
                 /* 在判断文件是否结束 */
                 if (feof(m_send_file))
+                {
                     m_pSendPack->is_finish = htons(1);
+                    qDebug() << "ok";
+                }
                 else
+                {
                     m_pSendPack->is_finish = htons(0);
+                    qDebug() << "not ok";
+                }
 
-                m_pSendPack->data[(int)m_pSendPack->file_name_len+size] = '\0';
+                //m_pSendPack->data[(int)m_pSendPack->file_name_len+size] = '\0';
                 /* 复制文件名 */
                 strncpy(m_pSendPack->data,m_send_file_name.toStdString().c_str(),
                         static_cast<size_t>( m_pSendPack->file_name_len));
