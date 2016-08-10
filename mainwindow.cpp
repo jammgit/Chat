@@ -44,7 +44,7 @@ void MainWindow::__Init()
         ui->BTN_SEND_EMOJI->setEnabled(false);
         ui->BTN_SHAKE->setEnabled(false);
         ui->BTN_FILE->setEnabled(false);
-        ui->COMBO_DOWN_FILE_LIST->setEditable(false);
+        ui->COMBO_DOWN_FILE_LIST->setEnabled(false);
 
         QPalette pa;
         pa.setColor(QPalette::WindowText,QColor(0,180,180));
@@ -431,6 +431,7 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 
 
 
+
     QMessageBox::information(this, "提示", "聊天结束");
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
@@ -439,15 +440,7 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
 /* 发送图片 */
 void MainWindow::on_BTN_SEND_PIC_clicked()
 {
-    if (m_is_show_time)
-    {
-        ui->TEXT_MSG_RECORD->setHtml(
-                    ui->TEXT_MSG_RECORD->toHtml()
-                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
-                    );
-        m_pShowTimer->start(TIME_DISPLAY_SPACE);
-        m_is_show_time = false;
-    }
+
     QStringList   fileNameList;
     QFileDialog* fd = new QFileDialog(this);        //创建对话框
     fd->resize(240,320);                            //设置显示的大小
@@ -467,6 +460,14 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
     qDebug() << fileNameList;
 
     QString html;
+    if (m_is_show_time)
+    {
+        html += TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE)
+                + QDateTime::currentDateTime().toString()
+                + TEXT_BACK;
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
     foreach (QString path, fileNameList) {
         emit this->signal_append_picture_task(path);
         QImage image(path);
@@ -487,15 +488,7 @@ void MainWindow::on_BTN_SEND_PIC_clicked()
 /* 发送文件 */
 void MainWindow::on_BTN_FILE_clicked()
 {
-    if (m_is_show_time)
-    {
-        ui->TEXT_MSG_RECORD->setHtml(
-                    ui->TEXT_MSG_RECORD->toHtml()
-                    + TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK
-                    );
-        m_pShowTimer->start(TIME_DISPLAY_SPACE);
-        m_is_show_time = false;
-    }
+
     QStringList   fileNameList;
     QFileDialog* fd = new QFileDialog(this);        //创建对话框
     fd->resize(240,320);                            //设置显示的大小
@@ -512,9 +505,14 @@ void MainWindow::on_BTN_FILE_clicked()
     }
     fd->close();
     qDebug() << fileNameList;
-
-
     QString html;
+    if (m_is_show_time)
+    {
+        html += TEXT_FRONT.arg(CENTER, FONT, TIME_COLOR, FONT_SIZE) + QDateTime::currentDateTime().toString() + TEXT_BACK;
+        m_pShowTimer->start(TIME_DISPLAY_SPACE);
+        m_is_show_time = false;
+    }
+
     foreach (QString path, fileNameList) {
         emit this->signal_append_file_task(path);
         html += TEXT_FRONT.arg(RIGHT,FONT,TEXT_COLOR_3,FONT_SIZE)+"我发送了文件["+ path+"]"+TEXT_BACK;
@@ -791,9 +789,11 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 
 void MainWindow::slot_send_error()
 {
+    QMessageBox::information(nullptr, "网络错误", "通信断开连接，请重试");
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
+    m_pTextChat->Close();
     if (m_pFileClient)
     {
         m_pFileClient->exit();
@@ -876,6 +876,8 @@ void MainWindow::slot_recv_file_success(const QString& file)
     ui->TEXT_MSG_RECORD->setHtml(
                 ui->TEXT_MSG_RECORD->toHtml()
                 + html);
+
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 }
 
 void MainWindow::slot_recv_picture_success(const QString& file)
@@ -903,6 +905,8 @@ void MainWindow::slot_recv_picture_success(const QString& file)
                   QString::number(image.height()/(image.width()/200)),
                   QString::number(200))
                 );
+
+    ui->TEXT_MSG_RECORD->verticalScrollBar()->setValue(32767);
 
 }
 

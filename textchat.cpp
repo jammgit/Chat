@@ -83,8 +83,8 @@ void TextChat::Close()
 {
     if (m_pTextConn)
     {
-        m_pTextConn->write(CLOSE);
-        m_pTextConn->waitForBytesWritten();
+        if (m_pTextConn->write(CLOSE)>0)            //只有在还没断开连接时才wait，对于非正常关闭不应该wait
+            m_pTextConn->waitForBytesWritten();
         qDebug() << "close";
         this->__Close_Socket();
         m_isConnect = false;

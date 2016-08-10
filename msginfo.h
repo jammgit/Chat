@@ -3,6 +3,7 @@
 
 #include <QString>
 
+/* 防同名文件冲突的存储结构体 */
 typedef struct
 {
     QString filepath;            //文件路径

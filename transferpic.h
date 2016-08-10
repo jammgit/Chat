@@ -112,6 +112,7 @@ signals:
     void signal_peer_close();
     /* 通知主线程 */
     void signal_recv_picture_success(const QString& file);
+    void signal_send_error();
 
 public slots:
     /* 主线程通知 */

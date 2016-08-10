@@ -22,9 +22,8 @@
 #include <winsock.h>
 #include "msginfo.h"
 
-/*  传输格式：        文件名(base64编码) +':'+ 文件内容(base64编码)+';'
- *  文件传输完成标志： 文件名(base64编码)  + ':' +剩余文件内容(base64编码) +':'+"END"(base64编码) ';'
-*/
+
+
 ///////////////////////////////////////////////////////////////////////
 /// MyFileThread_Client
 ///////////////////////////////////////////////////////////////////////////
@@ -106,6 +105,7 @@ signals:
     void signal_peer_close();
     /* 通知主线程 */
     void signal_recv_file_success(const QString& file);
+    void signal_send_error();
 
 public slots:
     /* 主线程通知 */

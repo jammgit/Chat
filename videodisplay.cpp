@@ -54,26 +54,24 @@ void MyVideo_Send_Thread::run()
     this->exec();
 }
 
+//void MyVideo_Send_Thread::finish()
+//{
+//    this->slot_finished();
+//}
+
 void MyVideo_Send_Thread::slot_finished()
 {
-//    if (m_pServer)
-//    {
-//        m_pServer->close();
-//        delete m_pServer;
-//        m_pServer = nullptr;
-//    }
-//    if (m_pSocket)
-//    {
-//        m_pSocket->close();
-//        delete m_pSocket;
-//        m_pSocket = nullptr;
-//    }
-
-//    if (m_pVideoSend)
-//    {
-//        delete m_pVideoSend;
-//        m_pVideoSend = nullptr;
-//    }
+    qDebug() << "finish";
+    if (m_pSocket)
+    {
+        m_pSocket->deleteLater();
+        m_pSocket = nullptr;
+    }
+    if (m_pVideoSend)
+    {
+        m_pVideoSend->deleteLater();
+        m_pVideoSend = nullptr;
+    }
 }
 
 void MyVideo_Send_Thread::slot_new_connection()
@@ -89,6 +87,7 @@ void MyVideo_Send_Thread::slot_new_connection()
         }
 
         m_pVideoSend = new VideoDisplay_Send(m_pWin, m_pSocket);
+        m_pVideoSend->Start();
     }
 }
 
@@ -139,10 +138,18 @@ void VideoDisplay_Send::__Init_Camera()
 
     connect(m_pTimer, SIGNAL(timeout()), this, SLOT(slot_capture_image()));
 
-    m_pTimer->start(50);
-
     connect(m_pImageCapture, SIGNAL(imageCaptured(int,QImage)),
             this, SLOT(slot_capture_image(int,QImage)));
+}
+
+void VideoDisplay_Send::Start()
+{
+    m_pTimer->start(50);
+}
+
+void VideoDisplay_Send::Stop()
+{
+    m_pTimer->stop();
 }
 
 void VideoDisplay_Send::slot_capture_image()
@@ -247,7 +254,7 @@ void VideoDisplay_Send::slot_capture_image(int,QImage image)
     pic_in.i_pts = i_pts++;
     x264_encoder_encode(encoder, &nals, &nnal, &pic_in, &pic_out);
     x264_nal_t *nal;
-    FILE *file = fopen("me.h264", "ab+");
+    //FILE *file = fopen("me.h264", "ab+");
     for (nal = nals; nal < nals + nnal; nal++)
     {
       if (m_pSocket)
@@ -257,9 +264,10 @@ void VideoDisplay_Send::slot_capture_image(int,QImage image)
           if (ret < 0)
               qDebug() << ret;
       }
-      fwrite(reinterpret_cast<const char *>(nal->p_payload),1,nal->i_payload,file);
+      //qDebug() << "["<<nal->i_payload<<"]";
+      //fwrite(reinterpret_cast<const char *>(nal->p_payload),1,nal->i_payload,file);
     }
-    fclose(file);
+    //fclose(file);
 }
 
 void VideoDisplay_Send::slot_close_camera()
@@ -317,8 +325,14 @@ VideoDisplay_Recv::~VideoDisplay_Recv()
 void VideoDisplay_Recv::__Init()
 {
     videoStreamIndex=-1;
-    av_register_all();                          //注册库中所有可用的文件格式和解码器
+
+//    av_register_all();                          //注册库中所有可用的文件格式和解码器
+
+    AVInputFormat ifmt;
+    ifmt.raw_codec_id = AV_CODEC_ID_H264;
+    av_register_input_format(&ifmt);
     avformat_network_init();                    //初始化网络流格式,使用网络流时必须先执行
+
     pAVFormatContext = avformat_alloc_context();//申请一个AVFormatContext结构的内存,并进行简单初始化
     pAVFrame=av_frame_alloc();
 
@@ -327,7 +341,7 @@ void VideoDisplay_Recv::__Init()
     url.append(QString(":%1").arg(QString::number(VIDEO_SERVER_PORT)));
     qDebug() << url;
     //打开视频流
-    int result=avformat_open_input(&pAVFormatContext, url.toStdString().c_str(),NULL,NULL);
+    int result = avformat_open_input(&pAVFormatContext, url.toStdString().c_str(),&ifmt,NULL);
     if (result<0){
         qDebug()<<"打开视频流失败";
         exit(0);
@@ -383,18 +397,19 @@ void VideoDisplay_Recv::Play()
 {
     //一帧一帧读取视频
     int frameFinished=0;
+    int size = videoHeight*videoWidth;
     while (true){
         if (av_read_frame(pAVFormatContext, &pAVPacket) >= 0){
             if(pAVPacket.stream_index==videoStreamIndex){
-                qDebug()<<"开始解码"<<QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+                //qDebug()<<"开始解码"<<QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
                 avcodec_decode_video2(pAVCodecContext, pAVFrame, &frameFinished, &pAVPacket);
 
                 if (frameFinished){
                     mutex.lock();
                     sws_scale(pSwsContext,(const uint8_t* const *)pAVFrame->data,pAVFrame->linesize,0,videoHeight,pAVPicture.data,pAVPicture.linesize);
                     //发送获取一帧图像信号
-                    QImage image(pAVPicture.data[0],videoWidth,videoHeight,QImage::Format_RGB32);
-                    emit this->signal_get_image(image);
+                    m_image.loadFromData((uchar *)pAVPicture.data[0],size,"JPG");
+                    emit this->signal_get_image(m_image);
                     mutex.unlock();
                 }
             }

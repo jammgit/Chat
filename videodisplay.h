@@ -42,7 +42,11 @@ extern "C"
 #include <QThread>
 
 #include "msginfo.h"
-
+/*
+ *  由于发送和接受两个线程是阻塞的，所以连接之后信号槽不起作用，虽自定义资源释放
+ *
+ *
+*/
 ///////////////////////////////////////////////////////////////////////
 /// MyVideo_Send_Thread
 ///////////////////////////////////////////////////////////////////////////
@@ -59,6 +63,8 @@ public:
     ~MyVideo_Send_Thread();
 protected:
     void run();
+
+//    void finish();
 
 protected slots:
     void slot_finished();
@@ -88,6 +94,9 @@ class VideoDisplay_Send : public QObject
 public:
     explicit VideoDisplay_Send(QVideoWidget* pwin,QTcpSocket* socket, QObject *parent = 0);
     ~VideoDisplay_Send();
+
+    void Start();
+    void Stop();
 
 private:
     /* 初始化摄像头 */
@@ -183,6 +192,8 @@ private:
     int videoStreamIndex;
 
     bool isplaying;
+
+    QImage m_image;
 
 };
 

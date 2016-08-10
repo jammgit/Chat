@@ -40,6 +40,7 @@ void MyFileThread_Client::run()
     connect(m_pSocket, SIGNAL(readyRead()), m_pFileSrv, SLOT(slot_recv_file()));
     /* 对端关闭、接受完一个文件信号 */
     connect(m_pFileSrv, SIGNAL(signal_peer_close()), m_pWin, SLOT(slot_peer_close()));
+    connect(m_pFileSrv, SIGNAL(signal_send_error()), m_pWin, SLOT(slot_send_error()));
     connect(m_pFileSrv, SIGNAL(signal_recv_file_success(QString)),
             m_pWin, SLOT(slot_recv_file_success(QString)));
     /* 主线程添加一个任务 */
@@ -134,6 +135,7 @@ void MyFileThread_Server::slot_new_connection()
         connect(m_pSocket, SIGNAL(readyRead()), m_pFileSrv, SLOT(slot_recv_file()));
         /* 对端关闭、接受完一个文件信号 */
         connect(m_pFileSrv, SIGNAL(signal_peer_close()), m_pWin, SLOT(slot_peer_close()));
+        connect(m_pFileSrv, SIGNAL(signal_send_error()), m_pWin, SLOT(slot_send_error()));
         connect(m_pFileSrv, SIGNAL(signal_recv_file_success(QString)),
                 m_pWin, SLOT(slot_recv_file_success(QString)));
         /* 主线程添加一个任务 */
@@ -143,7 +145,7 @@ void MyFileThread_Server::slot_new_connection()
 }
 
 void MyFileThread_Server::slot_finished()
-{/* 不需要关闭监听套接字 */
+{
     if (m_pSocket)
     {
         m_pSocket->deleteLater();
@@ -154,6 +156,8 @@ void MyFileThread_Server::slot_finished()
         m_pFileSrv->deleteLater();
         m_pFileSrv = nullptr;
     }
+    /**/
+
 }
 
 
@@ -185,7 +189,7 @@ void TransferFile::slot_append_file_task(const QString &filepath)
     if (m_files.find(text.split("/").back()) != m_files.end())
     {/* 如果存在同名文件,插入一个时间值做分辨 */
         int idx = text.lastIndexOf(".");
-        text.insert(idx, QString("_%1").arg(QString::number(QDateTime::currentDateTime().toString().toInt())));
+        text.insert(idx, QString("_%1").arg(QString::number(QDateTime::currentDateTime().toTime_t())));
     }
 
     s.transname = text.split("/").back();
@@ -203,22 +207,14 @@ void TransferFile::slot_append_file_task(const QString &filepath)
 void TransferFile::slot_recv_file()
 {
     char buffer[32767];
-    qint64 ret = m_pSocket->read(buffer, 32767);
+    qint64 ret = m_pSocket->read(buffer, 32766);
     buffer[ret] = '\0';
 
     int idx = 0;
-    if (m_recv_file_name.size() != 0)
-    {
-        m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab+");
-        if (!m_recv_file)
-        {
-            qDebug() << "open file for write error";
-        }
-    }
 
     while ((qint64)idx < ret)
     {
-        m_pRecvPack = reinterpret_cast<chat_file_pack_t*>(buffer+idx);
+        m_pRecvPack = reinterpret_cast<chat_pic_pack_t*>(buffer+idx);
         /* 提取出本条数据所属的文件 */
         int flen = ntohs(m_pRecvPack->file_name_len);
         char buf[256];
@@ -227,47 +223,37 @@ void TransferFile::slot_recv_file()
         QString fname(buf);
         int dlen = ntohs(m_pRecvPack->data_used_len);
 
-        if (m_recv_file_name == fname) /* 还是旧文件数据 */
+        if (m_recv_file_name.size() == 0)   /* 刚创建文件的数据 */
         {
-            if (m_recv_file)
-                fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
-            else
-                qDebug() << "write not opened file";
-            if (ntohs(m_pRecvPack->is_finish) == 1)
-            {
-                fclose(m_recv_file);
-                m_recv_file = nullptr;
-                emit this->signal_recv_file_success(m_recv_file_name);
-            }
-        }
-        else                            /* 本条数据为新文件的 */
-        {
-            if (m_recv_file)
-            {
-                emit this->signal_recv_file_success(m_recv_file_name);
-                fclose(m_recv_file);
-                m_recv_file = nullptr;
-            }
             m_recv_file_name = fname;
-            QString filename("./tmp/");
-            filename.append(fname);
-            m_recv_file = fopen(filename.toStdString().c_str(), "ab+");
-            if (!m_recv_file)
+            m_recv_file = fopen(m_recv_file_name.toStdString().c_str(), "ab+");
+            if (m_recv_file)
             {
-                qDebug() << "open file for write error";
+                fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
             }
+            else
+                qDebug() << "write not opened file";
+        }
+        else if (m_recv_file_name == fname) /* 还是已创建文件的数据 */
+        {
             if (m_recv_file)
                 fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
             else
                 qDebug() << "write not opened file";
-        }
-        idx += sizeof(chat_file_pack_t)+dlen;
 
-    }
-    if (m_recv_file)
-    {
-        fclose(m_recv_file);
-        m_recv_file = nullptr;
+        }
+
+        /* 判断文件是否接受完毕 */
+        if (ntohs(m_pRecvPack->is_finish) == 1)
+        {
+            emit this->signal_recv_file_success(m_recv_file_name);
+            m_recv_file_name.clear();
+            fclose(m_recv_file);
+            m_recv_file = nullptr;
+
+        }
+        idx += sizeof(chat_pic_pack_t)+dlen;
+
     }
 }
 
@@ -280,7 +266,7 @@ void TransferFile::slot_send_file()
     qint64 ret;
     if (m_send_file)
     {/* 有一个正在发送的文件,分8次,每次1024byte */
-        m_read_file.lock();
+        //m_read_file.lock();
         for (int i = 0; i < 8; ++i)
         {
             if (!feof(m_send_file))
@@ -315,7 +301,12 @@ void TransferFile::slot_send_file()
 
                 if (ret < 0)
                 {
-                    emit this->signal_peer_close();
+                    qDebug() << m_pSocket->errorString();
+                    //m_read_file.unlock();
+                    emit this->signal_send_error();
+                    fclose(m_send_file);
+                    m_send_file = nullptr;
+                    break;
                 }
                 else if (ret < (qint64)size)
                 {
@@ -334,19 +325,25 @@ void TransferFile::slot_send_file()
                 break;
             }
 
-
         }//for
-        m_read_file.unlock();
+       //m_read_file.unlock();
     }
-    else if (!m_tasklist.isEmpty())
+    else
     {/* 没有正在发的文件，但任务列表有需要发的文件 */
+        Source s;
         m_pMutex->lock();
-        Source s = m_tasklist.front();
-        m_tasklist.pop_front();
-        m_pMutex->unlock();
-        /* 新建发送的文件 */
-        m_send_file = fopen(s.filepath.toStdString().c_str(), "rb");
-        m_send_file_name = s.transname;
+        if (!m_tasklist.isEmpty() && m_send_file==nullptr)
+        {
+            s = m_tasklist.front();
+            m_tasklist.pop_front();
+
+            /* 新建发送的文件 */
+            m_send_file = fopen(s.filepath.toStdString().c_str(), "rb");
+            m_send_file_name = s.transname;
+            m_pMutex->unlock();
+        }
+        else
+            m_pMutex->unlock();
 
     }
 }
