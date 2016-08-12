@@ -99,6 +99,7 @@ MyPictureThread_Server::~MyPictureThread_Server()
 
 void MyPictureThread_Server::run()
 {
+    qDebug() << "picture server start";
     if (!m_pListen)
     {
         m_pListen = new QTcpServer();
@@ -125,7 +126,7 @@ void MyPictureThread_Server::run()
 
 void MyPictureThread_Server::slot_new_connection()
 {
-    if (m_pListen->hasPendingConnections())
+    if (m_pListen->hasPendingConnections() && m_pSocket == nullptr)
     {
         m_pSocket = m_pListen->nextPendingConnection();
 
@@ -182,7 +183,7 @@ TransferPic::TransferPic(QTcpSocket*socket, QObject *parent)
 /* 添加任务 */
 void TransferPic::slot_append_picture_task(const QString &filepath)
 {
-    Source s;
+    chat_source_t s;
     s.filepath = filepath;
     QString text = filepath;
     if (m_files.find(text.split("/").back()) != m_files.end())
@@ -353,7 +354,7 @@ void TransferPic::slot_send_file()
     }
     else
     {/* 没有正在发的文件，但任务列表有需要发的文件 */
-        Source s;
+        chat_source_t s;
         m_pMutex->lock();
         if (!m_tasklist.isEmpty() && m_send_file==nullptr)
         {

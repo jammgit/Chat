@@ -67,6 +67,15 @@ class MyPictureThread_Server : public QThread
 public:
     explicit MyPictureThread_Server(QObject*pwin, QObject* parent=0);
     ~MyPictureThread_Server();
+
+    void close_socket()
+    {
+        if (m_pSocket)
+        {
+            m_pSocket->deleteLater();
+            m_pSocket = nullptr;
+        }
+    }
 protected:
     void run();
 
@@ -135,7 +144,7 @@ private:
     /* 图片、文件传输套接字 */
     QTcpSocket              * m_pSocket;
     /* 任务链表 */
-    QList<Source>             m_tasklist;
+    QList<chat_source_t>             m_tasklist;
     /* 用户发送，接受到的文件、图片列表记录<不包含路径文件名（同名文件加上时间戳后缀）,完整路径名> */
     QMap<QString, QString>    m_files;
     /* 资源访问互斥量 */

@@ -4,11 +4,11 @@
 #include <QString>
 
 /* 防同名文件冲突的存储结构体 */
-typedef struct
+typedef struct chat_source_s
 {
     QString filepath;            //文件路径
     QString transname;           //传输时的文件名，针对传输同名文件的情况
-}Source;
+}Source,chat_source_t;
 
 #define PICTURE_NAME_FILTER "Image Files(*.png *.jpg)"
 

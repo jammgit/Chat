@@ -40,7 +40,7 @@ void MainWindow::__Init()
         ui->TEXT_MSG_SEND->setEnabled(false);
         ui->BTN_SEND->setEnabled(false);
         ui->BTN_SEND_PIC->setEnabled(false);
-        ui->BTN_SESSION_CLOSE->setEnabled(false);
+        //ui->BTN_SESSION_CLOSE->setEnabled(false);
         ui->BTN_SEND_EMOJI->setEnabled(false);
         ui->BTN_SHAKE->setEnabled(false);
         ui->BTN_FILE->setEnabled(false);
@@ -141,9 +141,10 @@ void MainWindow::__Init()
         ui->BTN_FILE->setStyleSheet(str);
         ui->BTN_SHAKE->setStyleSheet(str);
 
+        ui->COMBO_DOWN_FILE_LIST->addItem(QString(""));
         ui->COMBO_DOWN_FILE_LIST->setLineEdit(ui->LINE_COMBO);
         ui->COMBO_DOWN_FILE_LIST->lineEdit()->setStyleSheet("QLineEdit {background-color:transparent;} "
-                                                            "QLineEdit {border: 1px solid  #000000}");
+                                                            "QLineEdit {border: 1px solid  #303030}");
         ui->COMBO_DOWN_FILE_LIST->setView(ui->LIST_COMBO);
         ui->COMBO_DOWN_FILE_LIST->view()->setStyleSheet("QListView {background-image: url(:/src/bg_4.png);}");
 
@@ -161,7 +162,7 @@ void MainWindow::__Init()
     connect(m_pShowTimer, SIGNAL(timeout()), this, SLOT(slot_show_time()));
     m_is_show_time = true;
 
-    m_is_open_source_mng = true;
+    m_is_open_chat_source_t_mng = true;
 
     /* 初始化多播、文本聊天接口 */
     m_pFindTerminal = new FindTerminal;
@@ -180,15 +181,17 @@ void MainWindow::__Init()
     m_pPicClient = nullptr;
 
     /* 视频:发送(服务端):1.创建摄像头 */
-    m_widget = new QVideoWidget(ui->LABEL_SELF);
-    m_widget->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
-    m_pVideoSend = new VideoDisplay_Send(m_widget);
+    m_pVideoWidget = new QVideoWidget(ui->LABEL_SELF);
+    m_pVideoWidget->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
+    m_pVideoSend = new VideoDisplay_Send(m_pVideoWidget);
     m_pVideoSend->OpenCamrea();
     connect(m_pVideoSend, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
+    connect(this, SIGNAL(signal_stop_timer()), m_pVideoSend, SLOT(slot_stop_timer()));
     /* 将摄像头资源也传给子线程，当传输视频时通过子线程提供的socket进行传输 */
     m_pVideoSend_thread = new MyVideo_Send_Thread(m_pVideoSend,this);
     m_pVideoSend->moveToThread(m_pVideoSend_thread);
-    m_pVideoSend_thread->start();
+
+    m_pVideoSend_thread->start(QThread::HighPriority);
 
     m_pVideoRecv_thread = nullptr;
     m_pVideoRecv = nullptr;
@@ -229,9 +232,9 @@ void MainWindow::__Set_Session(bool yes)
     {
         ui->TEXT_MSG_RECORD->clear();
         ui->TEXT_MSG_SEND->clear();
-        m_is_open_source_mng = false;
+        m_is_open_chat_source_t_mng = false;
         ui->COMBO_DOWN_FILE_LIST->clear();
-        m_is_open_source_mng = true;
+        m_is_open_chat_source_t_mng = true;
         ui->COMBO_DOWN_FILE_LIST->setEnabled(false);
         ui->LINE_COMBO->setEnabled(false);
         ui->TEXT_MSG_RECORD->setEnabled(false);
@@ -420,8 +423,9 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
     }
     if (m_pFileServer)
     {
-        m_pFileServer->exit();
-        m_pFileServer->start();
+//        m_pFileServer->exit();
+//        m_pFileServer->start();
+        m_pFileServer->close_socket();
     }
 
     if (m_pPicClient)
@@ -432,29 +436,36 @@ void MainWindow::on_BTN_SESSION_CLOSE_clicked()
     }
     if (m_pPicServer)
     {
-        m_pPicServer->exit();
-        m_pPicServer->start();
+//        m_pPicServer->exit();
+//        m_pPicServer->start();
+        m_pPicServer->close_socket();
     }
     if (m_pVideoSend_thread)
     {
-        m_pVideoSend_thread->exit();
-        m_pVideoSend_thread->start();
+//        m_pVideoSend_thread->exit();
+//        m_pVideoSend_thread->start();
+        emit this->signal_stop_timer();         // 停止发送视频，
+        m_pVideoSend_thread->close_socket();
     }
 
+
+    if (m_pVideoRecv_thread)
+    {
+//        m_pVideoRecv_thread->exit();
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
+    }
     if (m_pVideoRecv)
     {
         delete m_pVideoRecv;
         m_pVideoRecv = nullptr;
     }
-    if (m_pVideoRecv_thread)
-    {
-        delete m_pVideoRecv_thread;
-        m_pVideoRecv_thread = nullptr;
-    }
 
-    QMessageBox::information(this, "提示", "聊天结束");
+    QPixmap pix("./src/noimage_3.png");
+    ui->LABEL_OTHER->setPixmap(pix);
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
+    QMessageBox::information(this, "提示", "聊天结束");
 }
 
 /* 发送图片 */
@@ -547,7 +558,9 @@ void MainWindow::on_BTN_FILE_clicked()
 /* 打开资源管理 */
 void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1)
 {
-    if (m_is_open_source_mng)
+    if (arg1.isEmpty())
+        return;
+    if (m_is_open_chat_source_t_mng)
     {
         QString str("./tmp/");
         str.append(arg1);
@@ -588,17 +601,15 @@ void MainWindow::on_BTN_VIDEO_clicked()
     static bool open = false;
     if (open)
     {
-        QPalette p;
-        p.setBrush(QPalette::Button, QBrush(QPixmap("/src/openvideo.png")));
-        ui->BTN_VIDEO->setPalette(p);
+        ui->BTN_VIDEO->setIcon(QIcon("./src/openvideo.png"));
+        m_pVideoWidget->show();
         m_pVideoSend->OpenCamrea();
     }
     else
     {
-        QPalette p;
-        p.setBrush(QPalette::Button, QBrush(QPixmap("/src/closevideo.png")));
-        ui->BTN_VIDEO->setPalette(p);
+        ui->BTN_VIDEO->setIcon(QIcon("./src/closevideo.png"));
         m_pVideoSend->CloseCamera();
+        m_pVideoWidget->hide();
     }
     open = !open;
 }
@@ -695,8 +706,9 @@ void MainWindow::slot_peer_close()
     }
     if (m_pFileServer)
     {
-        m_pFileServer->exit();
-        m_pFileServer->start();
+//        m_pFileServer->exit();
+//        m_pFileServer->start();
+        m_pFileServer->close_socket();
     }
     if (m_pPicClient)
     {
@@ -706,28 +718,39 @@ void MainWindow::slot_peer_close()
     }
     if (m_pPicServer)
     {
-        m_pPicServer->exit();
-        m_pPicServer->start();
+//        m_pPicServer->exit();
+//        m_pPicServer->start();
+        m_pPicServer->close_socket();
     }
     if (m_pVideoSend_thread)
     {
-        m_pVideoSend_thread->exit();
-        m_pVideoSend_thread->start();
+//        m_pVideoSend_thread->exit();
+//        qDebug() << m_pVideoSend_thread->isRunning();
+//        m_pVideoSend_thread->start();
+//        qDebug() << m_pVideoSend_thread->isRunning();
+        emit this->signal_stop_timer();
+        m_pVideoSend_thread->close_socket();
+    }
+
+    if (m_pVideoRecv_thread)
+    {
+//        m_pVideoRecv_thread->exit();
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
     }
     if (m_pVideoRecv)
     {
         delete m_pVideoRecv;
         m_pVideoRecv = nullptr;
     }
-    if (m_pVideoRecv_thread)
-    {
-        delete m_pVideoRecv_thread;
-        m_pVideoRecv_thread = nullptr;
-    }
-    QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
+    QPixmap pix("./src/noimage_3.png");
+    ui->LABEL_OTHER->setPixmap(pix);
+
+
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
+    QMessageBox::information(nullptr, "聊天关闭", "对方结束了聊天");
 }
 
 
@@ -808,13 +831,16 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         m_pVideoRecv = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
         connect(m_pVideoRecv, SIGNAL(signal_get_image(QImage)),
                 this, SLOT(slot_get_image(QImage)));
+        connect(m_pVideoRecv, SIGNAL(signal_init_video_stream_error()),
+                this, SLOT(slot_init_video_stream_error()));
+        connect(m_pVideoRecv, SIGNAL(signal_peer_close()),this, SLOT(slot_peer_close()));
         m_pVideoRecv_thread = new MyVideo_Recv_Thread(m_pVideoRecv,this);
         m_pVideoRecv_thread->start();
 
     }
     else
     {/* 聊天请求被拒绝 */
-        QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
+
         ui->LIST_HOST->setEnabled(false);
 
         if (m_pFileClient)
@@ -829,6 +855,7 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
             delete m_pPicClient;
             m_pPicClient = nullptr;
         }
+        QMessageBox::information(this, "请求失败", "对方已拒绝聊天请求");
     }
 }
 
@@ -837,7 +864,7 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
 
 void MainWindow::slot_send_error()
 {
-    QMessageBox::information(nullptr, "网络错误", "通信断开连接，请重试");
+
     this->__Set_Session(false);
     ui->LIST_HOST->setEnabled(true);
     ui->COMBO_DOWN_FILE_LIST->clear();
@@ -850,8 +877,9 @@ void MainWindow::slot_send_error()
     }
     if (m_pFileServer)
     {
-        m_pFileServer->exit();
-        m_pFileServer->start();
+//        m_pFileServer->exit();
+//        m_pFileServer->start();
+        m_pFileServer->close_socket();
     }
     if (m_pPicClient)
     {
@@ -861,24 +889,33 @@ void MainWindow::slot_send_error()
     }
     if (m_pPicServer)
     {
-        m_pPicServer->exit();
-        m_pPicServer->start();
+//        m_pPicServer->exit();
+//        m_pPicServer->start();
+        m_pPicServer->close_socket();
     }
     if (m_pVideoSend_thread)
     {
-        m_pVideoSend_thread->exit();
-        m_pVideoSend_thread->start();
+//        m_pVideoSend_thread->exit();
+//        m_pVideoSend_thread->start();
+        emit this->signal_stop_timer();
+        m_pVideoSend_thread->close_socket();
+    }
+
+    if (m_pVideoRecv_thread)
+    {
+//        m_pVideoRecv_thread->exit();
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
     }
     if (m_pVideoRecv)
     {
         delete m_pVideoRecv;
         m_pVideoRecv = nullptr;
     }
-    if (m_pVideoRecv_thread)
-    {
-        delete m_pVideoRecv_thread;
-        m_pVideoRecv_thread = nullptr;
-    }
+    QPixmap pix("./src/noimage_3.png");
+    ui->LABEL_OTHER->setPixmap(pix);
+
+    QMessageBox::information(nullptr, "网络错误", "通信断开连接，请重试");
 }
 
 
@@ -920,9 +957,9 @@ void MainWindow::slot_shake_window()
 /* */
 void MainWindow::slot_recv_file_success(const QString& file)
 {
-    m_is_open_source_mng = false;
+    m_is_open_chat_source_t_mng = false;
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
-    m_is_open_source_mng = true;
+    m_is_open_chat_source_t_mng = true;
     QString html;
     /* 显示时间 */
     if (m_is_show_time)
@@ -945,9 +982,9 @@ void MainWindow::slot_recv_file_success(const QString& file)
 
 void MainWindow::slot_recv_picture_success(const QString& file)
 {
-    m_is_open_source_mng = false;
+    m_is_open_chat_source_t_mng = false;
     ui->COMBO_DOWN_FILE_LIST->addItem(file);
-    m_is_open_source_mng = true;
+    m_is_open_chat_source_t_mng = true;
     /* 显示时间 */
     if (m_is_show_time)
     {
@@ -976,6 +1013,62 @@ void MainWindow::slot_recv_picture_success(const QString& file)
 void MainWindow::slot_get_image(const QImage &image)
 {
     ui->LABEL_OTHER->setPixmap(QPixmap::fromImage(image));
+}
+
+void MainWindow::slot_init_video_stream_error()
+{
+
+    this->__Set_Session(false);
+    ui->LIST_HOST->setEnabled(true);
+    ui->COMBO_DOWN_FILE_LIST->clear();
+    m_pTextChat->Close();
+    if (m_pFileClient)
+    {
+        m_pFileClient->exit();
+        delete m_pFileClient;
+        m_pFileClient = nullptr;
+    }
+    if (m_pFileServer)
+    {
+//        m_pFileServer->exit();
+//        m_pFileServer->start();
+        m_pFileServer->close_socket();
+    }
+    if (m_pPicClient)
+    {
+        m_pPicClient->exit();
+        delete m_pPicClient;
+        m_pPicClient = nullptr;
+    }
+    if (m_pPicServer)
+    {
+//        m_pPicServer->exit();
+//        m_pPicServer->start();
+        m_pPicServer->close_socket();
+    }
+    if (m_pVideoSend_thread)
+    {
+//        m_pVideoSend_thread->exit();
+//        m_pVideoSend_thread->start();
+        emit this->signal_stop_timer();
+        m_pVideoSend_thread->close_socket();
+    }
+
+    if (m_pVideoRecv_thread)
+    {
+//        m_pVideoRecv_thread->exit();
+        delete m_pVideoRecv_thread;
+        m_pVideoRecv_thread = nullptr;
+    }
+    if (m_pVideoRecv)
+    {
+        delete m_pVideoRecv;
+        m_pVideoRecv = nullptr;
+    }
+    QPixmap pix("./src/noimage_3.png");
+    ui->LABEL_OTHER->setPixmap(pix);
+
+    QMessageBox::information(nullptr, "网络错误", "建立视频通信过程失败");
 }
 
 

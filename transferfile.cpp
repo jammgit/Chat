@@ -99,6 +99,7 @@ MyFileThread_Server::~MyFileThread_Server()
 
 void MyFileThread_Server::run()
 {
+    qDebug() << "file server start";
     if (!m_pListen)
     {
         m_pListen = new QTcpServer();
@@ -125,7 +126,7 @@ void MyFileThread_Server::run()
 
 void MyFileThread_Server::slot_new_connection()
 {
-    if (m_pListen->hasPendingConnections())
+    if (m_pListen->hasPendingConnections() && m_pSocket == nullptr)
     {
         m_pSocket = m_pListen->nextPendingConnection();
 
@@ -183,7 +184,7 @@ TransferFile::TransferFile(QTcpSocket*socket, QObject *parent)
 /* 添加任务 */
 void TransferFile::slot_append_file_task(const QString &filepath)
 {
-    Source s;
+    chat_source_t s;
     s.filepath = filepath;
     QString text = filepath;
     if (m_files.find(text.split("/").back()) != m_files.end())
@@ -223,6 +224,7 @@ void TransferFile::slot_recv_file()
     ret += idx_for_buffer;
     /* 重新初始化buff_for_buff计数器 */
     idx_for_buffer = 0;
+    static int counter = 0;
     while ((qint64)idx < ret)
     {
         m_pRecvPack = reinterpret_cast<chat_pic_pack_t*>(buffer+idx);
@@ -275,7 +277,17 @@ void TransferFile::slot_recv_file()
                 m_recv_file = nullptr;
 
             }
+
+            if (dlen == 1030)
+                counter+=dlen;
+            else
+            {
+                qDebug() << counter;
+                exit(0);
+            }
+
             idx += (sizeof(chat_pic_pack_t)+dlen);
+
         }//else
 
     }//while
@@ -364,7 +376,7 @@ void TransferFile::slot_send_file()
     }
     else
     {/* 没有正在发的文件，但任务列表有需要发的文件 */
-        Source s;
+        chat_source_t s;
         m_pMutex->lock();
         if (!m_tasklist.isEmpty() && m_send_file==nullptr)
         {

@@ -41,6 +41,9 @@ extern "C"
 #include <QTimer>
 #include <QThread>
 
+const int width = 640;
+const int height = 480;
+
 #include "msginfo.h"
 /*
  *  由于发送和接受两个线程是阻塞的，所以连接之后信号槽不起作用，虽自定义资源释放
@@ -61,6 +64,17 @@ public:
     explicit MyVideo_Send_Thread(VideoDisplay_Send* send, QObject* parent=0);
 
     ~MyVideo_Send_Thread();
+
+    void close_socket()
+    {
+        m_mutex.lock();
+        if (m_pSocket)
+        {
+            m_pSocket->deleteLater();
+            m_pSocket = nullptr;
+        }
+        m_mutex.unlock();
+    }
 protected:
     void run();
 
@@ -75,7 +89,7 @@ protected slots:
 private:
     QTcpSocket         * m_pSocket;
     QTcpServer         * m_pServer;
-
+    QMutex               m_mutex;
     VideoDisplay_Send  * m_pVideoSend;
 
 };
@@ -98,6 +112,7 @@ public:
     void OpenCamrea();
     void CloseCamera();
 
+
 private:
     /* 初始化摄像头 */
     void __Init_Camera();
@@ -105,8 +120,8 @@ private:
 signals:
     void signal_peer_close();
 
-public:
-
+public slots:
+    void slot_stop_timer();
 
 private slots:
     /* 获取一张图片 */
@@ -114,8 +129,9 @@ private slots:
 
     /* 超时截图 */
     void slot_capture_image();
-
 private:
+private:
+    /* 显示控件，及传输接口 */
     QVideoWidget            * m_pWin;
 
     QCamera                 * m_pCamera;
@@ -125,6 +141,27 @@ private:
     QTcpSocket              * m_pSocket;
 
     QTimer                  * m_pTimer;
+private:
+    /* FFmpeg图片格式转换变量 */
+//    AVFrame                 * m_rgb_pframe;
+//    int                       m_rgb_bytes;
+//    uint8_t                 * m_rgb_buffer;
+
+//    AVFrame                 * m_yuv_pframe;
+//    int                       m_yuv_bytes;
+//    uint8_t                 * m_yuv_buffer;
+
+//    SwsContext              * m_rgb2yuv_ctx;
+private:
+    /* X264实现变量,没次断开连接时就释放，再初始化 */
+    bool                      m_is_init_x264;
+
+    int                       m_fps;
+    int                       m_i_pts;
+    x264_picture_t            m_pic_in;
+    x264_picture_t            m_pic_out;
+    x264_t                  * m_pEncoder;
+    x264_param_t              m_param;
 
 };
 
@@ -162,7 +199,12 @@ public:
     ~VideoDisplay_Recv();
 
 signals:
+    /* 通知主窗口更新 */
     void signal_get_image(const QImage& image);
+    /* 通知主线程初始化流失败 */
+    void signal_init_video_stream_error();
+
+    void signal_peer_close();
 
 private:
     /* 初始化ffmpeg */
@@ -173,28 +215,21 @@ public:
     void Play();
 
 private:
+    QMutex                 mutex;
 
-
-    QHostAddress          m_addr;
+    QHostAddress           m_addr;
 
 private:
-    QMutex mutex;
-
-    AVPicture  pAVPicture;
-    AVFormatContext *pAVFormatContext;
-    AVCodecContext *pAVCodecContext;
-    AVFrame *pAVFrame;
-    SwsContext * pSwsContext;
-    AVPacket pAVPacket;
-
-    QString url;
-    int videoWidth;
-    int videoHeight;
-    int videoStreamIndex;
-
-    bool isplaying;
-
-    QImage m_image;
+    /* FFmpeg处理接口 */
+    AVPicture              m_AVPicture;
+    AVFormatContext      * m_pAVFormatContext;
+    AVCodecContext       * m_pAVCodecContext;
+    AVFrame              * m_pAVFrame;
+    SwsContext           * m_pSwsContext;
+    AVPacket               m_AVPacket;
+    int                    m_VideoStreamIdx;
+    int                    m_VideoWidth;
+    int                    m_VideoHeight;
 
 };
 

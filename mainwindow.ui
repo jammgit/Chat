@@ -319,7 +319,7 @@
     </property>
     <property name="icon">
      <iconset resource="picture.qrc">
-      <normaloff>:/src/openvideo.png</normaloff>:/src/openvideo.png</iconset>
+      <normaloff>:/openvideo</normaloff>:/openvideo</iconset>
     </property>
     <property name="iconSize">
      <size>

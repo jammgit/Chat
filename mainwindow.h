@@ -113,11 +113,15 @@ public slots: /* --------------文本消息槽函数---------------- */
     void slot_recv_picture_success(const QString& file);
     /* 视频帧显示 */
     void slot_get_image(const QImage& image);
+    void slot_init_video_stream_error();
+
 
 signals:
     /* 主线程通知,添加发送文件、图片任务 */
     void signal_append_file_task(const QString& filepath);
     void signal_append_picture_task(const QString& filepath);
+
+    void signal_stop_timer();
 
 public slots: /* --------------视频信息槽函数---------------- */
 
@@ -129,7 +133,7 @@ private:
     bool                          m_is_show_time;
 
     bool                          m_is_show_emoji_table;
-    bool                          m_is_open_source_mng;
+    bool                          m_is_open_chat_source_t_mng;
 
     /* 正在聊天的对端用户的信息 */
     chat_host_t                   m_peerhost;
@@ -146,7 +150,7 @@ private:
     MyPictureThread_Client      * m_pPicClient;
     MyPictureThread_Server      * m_pPicServer;
     /* 视频服务 */
-    QVideoWidget                * m_widget;
+    QVideoWidget                * m_pVideoWidget;
     MyVideo_Send_Thread         * m_pVideoSend_thread;
     VideoDisplay_Send           * m_pVideoSend;
     MyVideo_Recv_Thread         * m_pVideoRecv_thread;
