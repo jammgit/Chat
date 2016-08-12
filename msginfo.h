@@ -76,7 +76,7 @@ typedef struct chat_pic_pack_s
     unsigned short   is_finish;                  //标志是否传输完毕（1是0否）
     unsigned short   file_name_len;              //文件名长度
     unsigned short   data_used_len;              //有效数据长度(包括文件名)
-    char             data[];
+    char             data[0];
 }chat_pic_pack_t,chat_file_pack_t;
 
 #define BUFFER_LEN              1024

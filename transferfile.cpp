@@ -215,6 +215,8 @@ void TransferFile::slot_recv_file()
     char buffer[32767];
     /* 将上次不完整的包拼接起来 */
     strncpy(buffer, buff_for_buff, idx_for_buffer);
+    qDebug() << "------------------------------------------";
+    qDebug() << "idx_for_buffer:" << idx_for_buffer;
 
 
     qint64 ret = m_pSocket->read(buffer+idx_for_buffer, 32767-idx_for_buffer);
@@ -259,7 +261,7 @@ void TransferFile::slot_recv_file()
                 else
                     qDebug() << "write not opened file";
             }
-            else if (m_recv_file_name == fname) /* 还是已创建文件的数据 */
+            else if (m_recv_file_name.split('/').back() == fname) /* 还是已创建文件的数据 */
             {
                 if (m_recv_file)
                     fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
@@ -275,22 +277,26 @@ void TransferFile::slot_recv_file()
                 m_recv_file_name.clear();
                 fclose(m_recv_file);
                 m_recv_file = nullptr;
-
             }
-
-            if (dlen == 1030)
-                counter+=dlen;
+            qDebug() << "dlen   :" << dlen;
+            qDebug() << "ret-idx:" << ret - idx;
+            qDebug() << "ret    :" << ret;
+            qDebug() << "idx    :" << idx;
+            if (dlen == 1024)
+                counter+=dlen+sizeof(chat_file_pack_t);
             else
             {
-                qDebug() << counter;
+                qDebug() << "error";
+
                 exit(0);
             }
 
-            idx += (sizeof(chat_pic_pack_t)+dlen);
+            idx += (sizeof(chat_file_pack_t)+dlen);
 
         }//else
 
     }//while
+    qDebug() << "------------------------------------------";
 }
 
 void TransferFile::slot_send_file()

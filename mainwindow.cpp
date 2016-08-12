@@ -40,7 +40,7 @@ void MainWindow::__Init()
         ui->TEXT_MSG_SEND->setEnabled(false);
         ui->BTN_SEND->setEnabled(false);
         ui->BTN_SEND_PIC->setEnabled(false);
-        //ui->BTN_SESSION_CLOSE->setEnabled(false);
+        ui->BTN_SESSION_CLOSE->setEnabled(false);
         ui->BTN_SEND_EMOJI->setEnabled(false);
         ui->BTN_SHAKE->setEnabled(false);
         ui->BTN_FILE->setEnabled(false);
@@ -181,18 +181,20 @@ void MainWindow::__Init()
     m_pPicClient = nullptr;
 
     /* 视频:发送(服务端):1.创建摄像头 */
-    m_pVideoWidget = new QVideoWidget(ui->LABEL_SELF);
-    m_pVideoWidget->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
-    m_pVideoSend = new VideoDisplay_Send(m_pVideoWidget);
-    m_pVideoSend->OpenCamrea();
-    connect(m_pVideoSend, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
-    connect(this, SIGNAL(signal_stop_timer()), m_pVideoSend, SLOT(slot_stop_timer()));
-    /* 将摄像头资源也传给子线程，当传输视频时通过子线程提供的socket进行传输 */
-    m_pVideoSend_thread = new MyVideo_Send_Thread(m_pVideoSend,this);
-    m_pVideoSend->moveToThread(m_pVideoSend_thread);
+//    m_pVideoWidget = new QVideoWidget(ui->LABEL_SELF);
+//    m_pVideoWidget->setGeometry(1,1,ui->LABEL_SELF->width()-2,ui->LABEL_SELF->height()-2);
+//    m_pVideoSend = new VideoDisplay_Send(m_pVideoWidget);
+//    m_pVideoSend->OpenCamrea();
+//    connect(m_pVideoSend, SIGNAL(signal_peer_close()), this, SLOT(slot_peer_close()));
+//    connect(this, SIGNAL(signal_stop_timer()), m_pVideoSend, SLOT(slot_stop_timer()));
+//    /* 将摄像头资源也传给子线程，当传输视频时通过子线程提供的socket进行传输 */
+//    m_pVideoSend_thread = new MyVideo_Send_Thread(m_pVideoSend,this);
+//    m_pVideoSend->moveToThread(m_pVideoSend_thread);
 
-    m_pVideoSend_thread->start(QThread::HighPriority);
+//    m_pVideoSend_thread->start(QThread::HighPriority);
 
+    m_pVideoSend = nullptr;
+    m_pVideoSend_thread = nullptr;
     m_pVideoRecv_thread = nullptr;
     m_pVideoRecv = nullptr;
     /* 视频:接受是主动连接端，在主动连接时再创建 */
@@ -562,16 +564,14 @@ void MainWindow::on_COMBO_DOWN_FILE_LIST_currentIndexChanged(const QString &arg1
         return;
     if (m_is_open_chat_source_t_mng)
     {
-        QString str("./tmp/");
-        str.append(arg1);
-        QFileInfo fi(str);
+        QFileInfo fi(arg1);
         QString filePath;
         filePath=fi.absolutePath();
 #ifdef Q_OS_WIN32
         filePath.replace(QString("/"),QString("\\"));
         QString path("/select,");
         path.append(filePath);
-        path.append(QString("\\")+arg1);
+        path.append(QString("\\")+arg1.split('/').back());
         ShellExecuteA(0,"open","explorer.exe",path.toStdString().c_str(),NULL,true);
 #else
         QDesktopServices::openUrl(QUrl(filePath, QUrl::TolerantMode));
@@ -706,8 +706,6 @@ void MainWindow::slot_peer_close()
     }
     if (m_pFileServer)
     {
-//        m_pFileServer->exit();
-//        m_pFileServer->start();
         m_pFileServer->close_socket();
     }
     if (m_pPicClient)
@@ -718,8 +716,6 @@ void MainWindow::slot_peer_close()
     }
     if (m_pPicServer)
     {
-//        m_pPicServer->exit();
-//        m_pPicServer->start();
         m_pPicServer->close_socket();
     }
     if (m_pVideoSend_thread)
@@ -828,14 +824,14 @@ void MainWindow::slot_request_result(bool ret, const chat_host_t& peerhost)
         ui->LIST_HOST->setEnabled(false);
 
         /* 视频接受 */
-        m_pVideoRecv = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
-        connect(m_pVideoRecv, SIGNAL(signal_get_image(QImage)),
-                this, SLOT(slot_get_image(QImage)));
-        connect(m_pVideoRecv, SIGNAL(signal_init_video_stream_error()),
-                this, SLOT(slot_init_video_stream_error()));
-        connect(m_pVideoRecv, SIGNAL(signal_peer_close()),this, SLOT(slot_peer_close()));
-        m_pVideoRecv_thread = new MyVideo_Recv_Thread(m_pVideoRecv,this);
-        m_pVideoRecv_thread->start();
+//        m_pVideoRecv = new VideoDisplay_Recv(QHostAddress(m_peerhost.address));
+//        connect(m_pVideoRecv, SIGNAL(signal_get_image(QImage)),
+//                this, SLOT(slot_get_image(QImage)));
+//        connect(m_pVideoRecv, SIGNAL(signal_init_video_stream_error()),
+//                this, SLOT(slot_init_video_stream_error()));
+//        connect(m_pVideoRecv, SIGNAL(signal_peer_close()),this, SLOT(slot_peer_close()));
+//        m_pVideoRecv_thread = new MyVideo_Recv_Thread(m_pVideoRecv,this);
+//        m_pVideoRecv_thread->start();
 
     }
     else
@@ -877,8 +873,6 @@ void MainWindow::slot_send_error()
     }
     if (m_pFileServer)
     {
-//        m_pFileServer->exit();
-//        m_pFileServer->start();
         m_pFileServer->close_socket();
     }
     if (m_pPicClient)
@@ -889,21 +883,16 @@ void MainWindow::slot_send_error()
     }
     if (m_pPicServer)
     {
-//        m_pPicServer->exit();
-//        m_pPicServer->start();
         m_pPicServer->close_socket();
     }
     if (m_pVideoSend_thread)
     {
-//        m_pVideoSend_thread->exit();
-//        m_pVideoSend_thread->start();
         emit this->signal_stop_timer();
         m_pVideoSend_thread->close_socket();
     }
 
     if (m_pVideoRecv_thread)
     {
-//        m_pVideoRecv_thread->exit();
         delete m_pVideoRecv_thread;
         m_pVideoRecv_thread = nullptr;
     }
@@ -1030,8 +1019,6 @@ void MainWindow::slot_init_video_stream_error()
     }
     if (m_pFileServer)
     {
-//        m_pFileServer->exit();
-//        m_pFileServer->start();
         m_pFileServer->close_socket();
     }
     if (m_pPicClient)
@@ -1042,21 +1029,16 @@ void MainWindow::slot_init_video_stream_error()
     }
     if (m_pPicServer)
     {
-//        m_pPicServer->exit();
-//        m_pPicServer->start();
         m_pPicServer->close_socket();
     }
     if (m_pVideoSend_thread)
     {
-//        m_pVideoSend_thread->exit();
-//        m_pVideoSend_thread->start();
         emit this->signal_stop_timer();
         m_pVideoSend_thread->close_socket();
     }
 
     if (m_pVideoRecv_thread)
     {
-//        m_pVideoRecv_thread->exit();
         delete m_pVideoRecv_thread;
         m_pVideoRecv_thread = nullptr;
     }

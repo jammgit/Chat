@@ -255,7 +255,7 @@ void TransferPic::slot_recv_file()
                 else
                     qDebug() << "write not opened file";
             }
-            else if (m_recv_file_name == fname) /* 还是已创建文件的数据 */
+            else if (m_recv_file_name.split('/').back() == fname) /* 还是已创建文件的数据 */
             {
                 if (m_recv_file)
                     fwrite(m_pRecvPack->data+flen,1,dlen-flen,m_recv_file);
@@ -271,6 +271,7 @@ void TransferPic::slot_recv_file()
                 m_recv_file_name.clear();
                 fclose(m_recv_file);
                 m_recv_file = nullptr;
+
 
             }
             idx += (sizeof(chat_pic_pack_t)+dlen);
